@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>maps</title>
+    <link rel="stylesheet" href="/leaflet.css" crossorigin=""/>
+    <script src="/leaflet.js" crossorigin=""></script>
+	<style>
+		html, body {
+			height: 100%;
+			margin: 0;
+		}
+		.leaflet-container {
+			height: 100%;
+			width: 100%;
+			max-width: 100%;
+			max-height: 100%;
+		}
+	</style>	
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+        // 初始化地图，设置中心点和缩放级别
+        const map = L.map('map').setView([30, 110], 4);
+
+        // 定义多个瓦片图层
+        const tileLayers = {
+
+            'google镜像': L.tileLayer('http://mt{s}.xx.xx/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
+                maxZoom: 21,
+				subdomains: [0,1,2,3]
+            }),
+
+			'Arcgisonline': L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
+                attribution: '<a href="https://arcgisonline.com/">arcgisonline</a> contributors',
+                maxZoom: 19
+            }),
+
+            'google': L.tileLayer('http://mt{s}.google.com/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
+                maxZoom: 21,
+				subdomains: [0,1,2,3]
+            }),
+
+
+        };
+
+
+        // 将第一个瓦片图层添加到地图
+        tileLayers['google镜像'].addTo(map);
+
+        // 创建图层控制
+        const baseMaps = {};
+        for (const [name, layer] of Object.entries(tileLayers)) {
+            baseMaps[name] = layer;
+        }
+
+        // 添加图层切换控件
+        L.control.layers(baseMaps, null, {
+            collapsed: false,
+            position: 'topleft'
+        }).addTo(map);
+
+        // 添加比例尺控件
+        L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+
+        // 添加全屏控件
+        L.control.fullscreen({
+            position: 'topleft',
+            title: '全屏查看',
+            titleCancel: '退出全屏',
+            content: '<i class="fa fa-expand"></i>',
+            forceSeparateButton: true
+        }).addTo(map);
+
+        // 添加当前坐标显示控件
+        L.control.mousePosition({
+            position: 'bottomright',
+            separator: ' | ',
+            emptyString: '鼠标不在地图上',
+            lngFirst: true,
+            numDigits: 5,
+            lngFormatter: function(lng) {
+                return `经度: ${lng.toFixed(5)}°`;
+            },
+            latFormatter: function(lat) {
+                return `纬度: ${lat.toFixed(5)}°`;
+            }
+        }).addTo(map);
+
+        // 为地图添加点击事件，显示点击位置的经纬度
+        map.on('click', function(e) {
+            alert(`点击位置的经纬度: ${e.latlng.lng.toFixed(5)}, ${e.latlng.lat.toFixed(5)}`);
+        });
+
+    </script>
+</body>
+</html>
+    
