@@ -55,7 +55,7 @@ WebMapsByLeaflet/
 
 ## 许可证
 
-BSD 2-Clause License - 详见 [LICENSE](LICENSE) 文件
+GNU Affero General Public License v3.0 - 详见 [LICENSE](LICENSE) 文件
 
 ## 致谢
 
