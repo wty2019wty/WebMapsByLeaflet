@@ -664,7 +664,7 @@
 
         barToggle.addEventListener('click', function () {
             if (barCollapsed) {
-                // 展开：先隐藏内容（淡入），宽高从 48px 平滑过渡到内容实际尺寸
+                // 展开：内容全程隐藏，宽高从 48px 平滑撑开到全尺寸后，内容再淡入
                 topBarEl.classList.add('expanding');
                 topBarEl.classList.remove('collapsed');
                 topBarEl.style.width = '';
@@ -677,12 +677,6 @@
                 void topBarEl.offsetHeight;
                 topBarEl.style.width = fullW + 'px';
                 topBarEl.style.height = fullH + 'px';
-                // 下一帧移除 expanding，内容随宽高过渡同步淡入
-                requestAnimationFrame(function () {
-                    requestAnimationFrame(function () {
-                        topBarEl.classList.remove('expanding');
-                    });
-                });
                 topBarEl.addEventListener('transitionend', function onEnd(e) {
                     if (e.target === topBarEl && e.propertyName === 'height') {
                         topBarEl.style.width = '';
