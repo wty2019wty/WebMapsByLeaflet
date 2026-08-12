@@ -57,6 +57,16 @@
             color: #111827;
             white-space: nowrap;
         }
+        .top-bar .crs-badge {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            color: #fff;
+            background: #6366f1;
+            white-space: nowrap;
+        }
         .top-bar .sep {
             width: 1px;
             height: 18px;
@@ -75,30 +85,87 @@
     <div class="top-bar">
         <span class="logo">🗺️</span>
         <span class="layer-name" id="layerName">Web 地图查看器</span>
+        <span class="crs-badge" id="crsName">WGS-84</span>
         <span class="sep"></span>
         <span class="coords" id="coords">纬度 --  经度 --</span>
     </div>
     <div id="map"></div>
 
     <script>
-        // 图源配置
+        // 图源配置（crs 标记坐标系：wgs84 或 gcj02）
         const baseMaps = {
             'Arcgisonline': L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
                 attribution: '<a href="https://arcgisonline.com/">arcgisonline</a> contributors',
-                maxZoom: 19
+                maxZoom: 19,
+                crs: 'gcj02'
             }),
             'google': L.tileLayer('http://mt{s}.google.com/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
                 maxZoom: 21,
-                subdomains: [0, 1, 2, 3]
+                subdomains: [0, 1, 2, 3],
+                crs: 'gcj02'
             })
         };
+
+        // 当前底图的坐标系
+        let currentCRS = 'wgs84';
+
+        // ---------- WGS-84 与 GCJ-02 互转（标准算法） ----------
+        function outOfChina(lat, lng) {
+            return (lng < 72.004 || lng > 137.8347) || (lat < 0.8293 || lat > 55.8271);
+        }
+
+        function transformLat(x, y) {
+            let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+            ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+            ret += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+            ret += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+            return ret;
+        }
+
+        function transformLng(x, y) {
+            let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+            ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+            ret += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+            ret += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+            return ret;
+        }
+
+        function wgs84ToGcj02(lat, lng) {
+            if (outOfChina(lat, lng)) return { lat: lat, lng: lng };
+            const a = 6378245.0;
+            const ee = 0.00669342162296594323;
+            let dLat = transformLat(lng - 105.0, lat - 35.0);
+            let dLng = transformLng(lng - 105.0, lat - 35.0);
+            const radLat = lat / 180.0 * Math.PI;
+            let magic = Math.sin(radLat);
+            magic = 1 - ee * magic * magic;
+            const sqrtMagic = Math.sqrt(magic);
+            dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * Math.PI);
+            dLng = (dLng * 180.0) / (a / sqrtMagic * Math.cos(radLat) * Math.PI);
+            return { lat: lat + dLat, lng: lng + dLng };
+        }
+
+        function gcj02ToWgs84(lat, lng) {
+            if (outOfChina(lat, lng)) return { lat: lat, lng: lng };
+            const wgs = wgs84ToGcj02(lat, lng);
+            return { lat: 2 * lat - wgs.lat, lng: 2 * lng - wgs.lng };
+        }
+
+        // 将经纬度转到 WGS-84（用于显示）
+        function toWgs84(lat, lng) {
+            return currentCRS === 'gcj02' ? gcj02ToWgs84(lat, lng) : { lat: lat, lng: lng };
+        }
 
         // 初始化地图，默认使用 Arcgisonline 卫星影像
         const map = L.map('map', {
             center: [39.9042, 116.4074], // 北京
             zoom: 12,
+            zoomControl: false, // 禁用默认左上角缩放控件
             layers: [baseMaps['Arcgisonline']]
         });
+
+        // 缩放按钮放到右下角，避免与顶部信息栏重叠
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // 添加图源切换控件
         L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -106,23 +173,33 @@
         // 添加比例尺（仅公制）
         L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
-        // 实时显示鼠标经纬度
+        // 实时显示鼠标经纬度（统一换算为 WGS-84）
         const coords = document.getElementById('coords');
         map.on('mousemove', function (e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            const latD = lat >= 0 ? 'N' : 'S';
-            const lngD = lng >= 0 ? 'E' : 'W';
-            coords.textContent = '纬度 ' + Math.abs(lat).toFixed(5) + '° ' + latD +
-                '  经度 ' + Math.abs(lng).toFixed(5) + '° ' + lngD;
+            const w = toWgs84(e.latlng.lat, e.latlng.lng);
+            const latD = w.lat >= 0 ? 'N' : 'S';
+            const lngD = w.lng >= 0 ? 'E' : 'W';
+            coords.textContent = '纬度 ' + Math.abs(w.lat).toFixed(5) + '° ' + latD +
+                '  经度 ' + Math.abs(w.lng).toFixed(5) + '° ' + lngD;
         });
         map.on('mouseout', function () {
             coords.textContent = '纬度 --  经度 --';
         });
 
-        // 添加当前图源名称显示
+        // 切换底图时：保持中心点物理位置不变（换算坐标系），并更新徽标
         map.on('baselayerchange', function (e) {
+            const layer = e.layer;
+            const nextCRS = layer.options.crs || 'wgs84';
             document.getElementById('layerName').textContent = e.name;
+            document.getElementById('crsName').textContent = nextCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
+
+            if (nextCRS !== currentCRS) {
+                const c = map.getCenter();
+                const wgs = currentCRS === 'gcj02' ? gcj02ToWgs84(c.lat, c.lng) : { lat: c.lat, lng: c.lng };
+                const target = nextCRS === 'gcj02' ? wgs84ToGcj02(wgs.lat, wgs.lng) : wgs;
+                map.setView([target.lat, target.lng], map.getZoom(), { animate: false });
+                currentCRS = nextCRS;
+            }
         });
     </script>
 </body>
