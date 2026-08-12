@@ -74,3 +74,4 @@ GNU Affero General Public License v3.0 - 详见 [LICENSE](LICENSE) 文件
 ## 致谢
 
 - [Leaflet](https://github.com/Leaflet/Leaflet) - 开源地图库
+- [StatiCrypt](https://github.com/robinmoisson/staticrypt)
