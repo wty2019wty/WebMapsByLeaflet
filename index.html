@@ -111,6 +111,29 @@
             color: #dc2626;
             background: rgba(239, 68, 68, 0.12);
         }
+        /* Toast 弹窗 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: #fff;
+            color: #1f2937;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: system-ui, sans-serif;
+            z-index: 10000;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body>
@@ -123,6 +146,7 @@
         <button class="pin-btn" id="pinBtn" title="固定当前坐标">📌</button>
     </div>
     <div id="map"></div>
+    <div class="toast" id="toast"></div>
 
     <script>
         // 图源配置（crs 标记坐标系：wgs84 或 gcj02）
@@ -197,11 +221,11 @@
             layers: [baseMaps['google']]
         });
 
-        // 缩放按钮放到右下角，避免与顶部信息栏重叠
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        // 缩放按钮放到左下角
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-        // 添加图源切换控件
-        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+        // 添加图源切换控件（左上角）
+        L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
 
         // 添加比例尺（仅公制）
         L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
@@ -279,19 +303,25 @@
             }
         });
 
+        // Toast 弹窗
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function () {
+                toast.classList.remove('show');
+            }, 1500);
+        }
+
         // 点击坐标复制到剪贴板
         coords.addEventListener('click', async function () {
             const text = pinned ? formatCoords(pinnedW.lat, pinnedW.lng) : coords.textContent;
             if (!text || text.indexOf('--') !== -1) return;
             try {
                 await navigator.clipboard.writeText(text);
-                const old = coords.textContent;
-                coords.textContent = '已复制 ✓';
-                setTimeout(function () {
-                    coords.textContent = pinned ? formatCoords(pinnedW.lat, pinnedW.lng) : old;
-                }, 1200);
+                showToast('已复制坐标');
             } catch (e) {
-                coords.textContent = '复制失败';
+                showToast('复制失败');
             }
         });
 
