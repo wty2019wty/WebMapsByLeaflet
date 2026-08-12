@@ -209,7 +209,8 @@
         const coords = document.getElementById('coords');
         const pinBtn = document.getElementById('pinBtn');
         let pinned = false;
-        let pinnedText = '';
+        let pinnedW = null;
+        let pinMarker = null;
 
         map.on('mousemove', function (e) {
             if (pinned) return;
@@ -229,31 +230,56 @@
                 '  经度 ' + Math.abs(lng).toFixed(5) + '° ' + lngD;
         }
 
-        // 📌 固定/取消固定当前坐标
-        pinBtn.addEventListener('click', function () {
-            pinned = !pinned;
-            if (pinned) {
-                const w = toWgs84(map.getCenter().lat, map.getCenter().lng);
-                pinnedText = formatCoords(w.lat, w.lng);
-                coords.textContent = pinnedText;
-            } else {
-                pinnedText = '';
-                coords.textContent = '纬度 --  经度 --';
+        // 固定坐标（显示 + 标记）
+        function setPinned(w) {
+            pinned = true;
+            pinnedW = w;
+            coords.textContent = formatCoords(w.lat, w.lng);
+            pinBtn.classList.add('pinned');
+            coords.classList.add('pinned');
+            if (pinMarker) map.removeLayer(pinMarker);
+            pinMarker = L.marker([w.lat, w.lng]).addTo(map);
+            pinBtn.title = '取消固定';
+        }
+
+        // 取消固定
+        function clearPinned() {
+            pinned = false;
+            pinnedW = null;
+            coords.textContent = '纬度 --  经度 --';
+            pinBtn.classList.remove('pinned');
+            coords.classList.remove('pinned');
+            if (pinMarker) {
+                map.removeLayer(pinMarker);
+                pinMarker = null;
             }
-            pinBtn.classList.toggle('pinned', pinned);
-            coords.classList.toggle('pinned', pinned);
+            pinBtn.title = '固定当前坐标';
+        }
+
+        // 左键点击地图：固定该点经纬度
+        map.on('click', function (e) {
+            setPinned(toWgs84(e.latlng.lat, e.latlng.lng));
+        });
+
+        // 📌 按钮：固定/取消固定当前地图中心
+        pinBtn.addEventListener('click', function () {
+            if (pinned) {
+                clearPinned();
+            } else {
+                setPinned(toWgs84(map.getCenter().lat, map.getCenter().lng));
+            }
         });
 
         // 点击坐标复制到剪贴板
         coords.addEventListener('click', async function () {
-            const text = pinned ? pinnedText : coords.textContent;
+            const text = pinned ? formatCoords(pinnedW.lat, pinnedW.lng) : coords.textContent;
             if (!text || text.indexOf('--') !== -1) return;
             try {
                 await navigator.clipboard.writeText(text);
                 const old = coords.textContent;
                 coords.textContent = '已复制 ✓';
                 setTimeout(function () {
-                    coords.textContent = pinned ? pinnedText : old;
+                    coords.textContent = pinned ? formatCoords(pinnedW.lat, pinnedW.lng) : old;
                 }, 1200);
             } catch (e) {
                 coords.textContent = '复制失败';
@@ -272,6 +298,12 @@
                 const wgs = currentCRS === 'gcj02' ? gcj02ToWgs84(c.lat, c.lng) : { lat: c.lat, lng: c.lng };
                 const target = nextCRS === 'gcj02' ? wgs84ToGcj02(wgs.lat, wgs.lng) : wgs;
                 map.setView([target.lat, target.lng], map.getZoom(), { animate: false });
+                // 已固定的标记同步换算，保持在同一物理位置
+                if (pinMarker) {
+                    const mwgs = pinnedW;
+                    const mt = nextCRS === 'gcj02' ? wgs84ToGcj02(mwgs.lat, mwgs.lng) : mwgs;
+                    pinMarker.setLatLng([mt.lat, mt.lng]);
+                }
                 currentCRS = nextCRS;
             }
         });
