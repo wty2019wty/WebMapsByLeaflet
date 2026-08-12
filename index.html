@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web 地图 - Leaflet</title>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="lib/leaflet/leaflet.css">
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="lib/leaflet/leaflet.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; }
@@ -78,6 +78,37 @@
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
             letter-spacing: 0.2px;
+            cursor: pointer;
+            pointer-events: auto;
+            border-radius: 6px;
+            padding: 2px 6px;
+            transition: background 0.2s;
+        }
+        .top-bar .coords:hover {
+            background: rgba(99, 102, 241, 0.12);
+        }
+        .top-bar .pin-btn {
+            pointer-events: auto;
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            padding: 4px 7px;
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            filter: grayscale(1);
+            transition: all 0.2s;
+        }
+        .top-bar .pin-btn:hover {
+            transform: scale(1.15);
+        }
+        .top-bar .pin-btn.pinned {
+            filter: none;
+            background: rgba(239, 68, 68, 0.15);
+        }
+        .top-bar .coords.pinned {
+            color: #dc2626;
+            background: rgba(239, 68, 68, 0.12);
         }
     </style>
 </head>
@@ -87,7 +118,8 @@
         <span class="layer-name" id="layerName">Web 地图查看器</span>
         <span class="crs-badge" id="crsName">WGS-84</span>
         <span class="sep"></span>
-        <span class="coords" id="coords">纬度 --  经度 --</span>
+        <span class="coords" id="coords" title="点击复制坐标">纬度 --  经度 --</span>
+        <button class="pin-btn" id="pinBtn" title="固定当前坐标">📌</button>
     </div>
     <div id="map"></div>
 
@@ -175,15 +207,57 @@
 
         // 实时显示鼠标经纬度（统一换算为 WGS-84）
         const coords = document.getElementById('coords');
+        const pinBtn = document.getElementById('pinBtn');
+        let pinned = false;
+        let pinnedText = '';
+
         map.on('mousemove', function (e) {
+            if (pinned) return;
             const w = toWgs84(e.latlng.lat, e.latlng.lng);
-            const latD = w.lat >= 0 ? 'N' : 'S';
-            const lngD = w.lng >= 0 ? 'E' : 'W';
-            coords.textContent = '纬度 ' + Math.abs(w.lat).toFixed(5) + '° ' + latD +
-                '  经度 ' + Math.abs(w.lng).toFixed(5) + '° ' + lngD;
+            coords.textContent = formatCoords(w.lat, w.lng);
         });
         map.on('mouseout', function () {
+            if (pinned) return;
             coords.textContent = '纬度 --  经度 --';
+        });
+
+        // 格式化坐标文本（WGS-84）
+        function formatCoords(lat, lng) {
+            const latD = lat >= 0 ? 'N' : 'S';
+            const lngD = lng >= 0 ? 'E' : 'W';
+            return '纬度 ' + Math.abs(lat).toFixed(5) + '° ' + latD +
+                '  经度 ' + Math.abs(lng).toFixed(5) + '° ' + lngD;
+        }
+
+        // 📌 固定/取消固定当前坐标
+        pinBtn.addEventListener('click', function () {
+            pinned = !pinned;
+            if (pinned) {
+                const w = toWgs84(map.getCenter().lat, map.getCenter().lng);
+                pinnedText = formatCoords(w.lat, w.lng);
+                coords.textContent = pinnedText;
+            } else {
+                pinnedText = '';
+                coords.textContent = '纬度 --  经度 --';
+            }
+            pinBtn.classList.toggle('pinned', pinned);
+            coords.classList.toggle('pinned', pinned);
+        });
+
+        // 点击坐标复制到剪贴板
+        coords.addEventListener('click', async function () {
+            const text = pinned ? pinnedText : coords.textContent;
+            if (!text || text.indexOf('--') !== -1) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                const old = coords.textContent;
+                coords.textContent = '已复制 ✓';
+                setTimeout(function () {
+                    coords.textContent = pinned ? pinnedText : old;
+                }, 1200);
+            } catch (e) {
+                coords.textContent = '复制失败';
+            }
         });
 
         // 切换底图时：保持中心点物理位置不变（换算坐标系），并更新徽标
