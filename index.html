@@ -326,6 +326,104 @@
             text-indent: -9999px !important;
             overflow: hidden !important;
         }
+
+        /* ========== 移动端适配 ========== */
+        @media (max-width: 767px) {
+            :root {
+                --icon-size-sm: 22px;
+                --icon-size-md: 30px;
+                --icon-size-lg: 34px;
+                --icon-size-xl: 38px;
+            }
+
+            html {
+                -webkit-tap-highlight-color: transparent;
+            }
+            body {
+                -webkit-touch-callout: none;
+            }
+
+            /* 顶部信息栏：多行卡片布局，适配小屏与刘海屏安全区 */
+            .top-bar {
+                left: 10px;
+                right: 10px;
+                top: calc(10px + env(safe-area-inset-top));
+                transform: none;
+                max-width: none;
+                border-radius: 16px;
+                flex-wrap: wrap;
+                gap: 8px 10px;
+                padding: 10px 12px;
+                justify-content: flex-start;
+            }
+            .top-bar .logo { order: 1; }
+            .top-bar .layer-select { order: 2; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+            .top-bar .crs-badge { order: 3; font-size: 11px; padding: 2px 8px; letter-spacing: 0.3px; }
+            .top-bar #gpsBtn { order: 4; margin-left: auto; }
+            .top-bar .coords { order: 5; }
+            .top-bar #copyBtn { order: 6; }
+            .top-bar .pin-btn { order: 7; }
+            .top-bar #measureBtn { order: 8; }
+            .top-bar .loc-coords { order: 9; }
+            .top-bar #locCopyBtn { order: 10; }
+            .top-bar .sep { display: none; }
+
+            /* 触控按钮：扩大点击区域至 40px */
+            .top-bar button,
+            .top-bar .pin-btn,
+            .top-bar .copy-btn {
+                width: 40px;
+                height: 40px;
+                flex: 0 0 40px;
+                background: rgba(255, 255, 255, 0.7);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+            .top-bar button img {
+                width: var(--icon-size-md) !important;
+                height: var(--icon-size-md) !important;
+            }
+            .top-bar .pin-btn.pinned,
+            .top-bar .copy-btn.copied {
+                box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6);
+            }
+
+            /* 坐标文本：缩短显示并自适应拉伸 */
+            .top-bar .coords,
+            .top-bar .loc-coords {
+                font-size: 12px;
+                width: auto;
+                min-width: 0;
+                flex: 1 1 auto;
+                padding: 6px 8px;
+            }
+
+            /* Toast 移至屏幕底部居中，避免遮挡顶部信息栏 */
+            .toast {
+                top: auto;
+                right: auto;
+                left: 50%;
+                bottom: calc(24px + env(safe-area-inset-bottom));
+                transform: translate(-50%, 16px);
+                max-width: calc(100vw - 32px);
+                white-space: normal;
+                text-align: center;
+            }
+            .toast.show {
+                transform: translate(-50%, 0);
+            }
+
+            /* 缩放控件：加大触控区域 */
+            .leaflet-control-zoom-in,
+            .leaflet-control-zoom-out {
+                width: 40px !important;
+                height: 40px !important;
+            }
+            .leaflet-touch .leaflet-bar a {
+                width: 40px;
+                height: 40px;
+                line-height: 40px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -498,12 +596,18 @@
             coords.textContent = '纬度 --  经度 --';
         });
 
+        // 移动端坐标文本缩短显示（复制时保留 8 位）
+        function isMobile() {
+            return window.innerWidth < 768;
+        }
+
         // 格式化坐标文本（withCrs 为 true 时附加坐标系前缀，用于复制）
         function formatCoords(lat, lng, withCrs) {
             const latD = lat >= 0 ? 'N' : 'S';
             const lngD = lng >= 0 ? 'E' : 'W';
-            let s = Math.abs(lat).toFixed(8) + '°' + latD +
-                '，' + Math.abs(lng).toFixed(8) + '°' + lngD;
+            const digits = withCrs ? 8 : (isMobile() ? 6 : 8);
+            let s = Math.abs(lat).toFixed(digits) + '°' + latD +
+                '，' + Math.abs(lng).toFixed(digits) + '°' + lngD;
             if (withCrs) {
                 const crsLabel = currentCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
                 s = '【' + crsLabel + '】' + s;
@@ -644,6 +748,7 @@
         gpsBtn.addEventListener('click', locate);
 
         // 测量工具
+        const isTouch = L.Browser.touch;
         let measureMode = false;
         let measurePoints = [];
         let measureLine = null;
@@ -669,9 +774,12 @@
             layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
             map.on('click', onMeasureClick);
             map.getContainer().addEventListener('contextmenu', preventContextMenu);
-            map.on('mousedown', onRightMouseDown);
-            map.on('mousemove', onRightMouseMove);
-            map.on('mouseup', onRightMouseUp);
+            // 触控设备使用系统手势平移/双指缩放，无需右键拖拽逻辑
+            if (!isTouch) {
+                map.on('mousedown', onRightMouseDown);
+                map.on('mousemove', onRightMouseMove);
+                map.on('mouseup', onRightMouseUp);
+            }
             // 联动：测量模式下可直接点击定位/固定标点选取其位置
             bindMeasureMarkers();
         }
@@ -685,9 +793,11 @@
             layerSelect.disabled = false;
             map.off('click', onMeasureClick);
             map.getContainer().removeEventListener('contextmenu', preventContextMenu);
-            map.off('mousedown', onRightMouseDown);
-            map.off('mousemove', onRightMouseMove);
-            map.off('mouseup', onRightMouseUp);
+            if (!isTouch) {
+                map.off('mousedown', onRightMouseDown);
+                map.off('mousemove', onRightMouseMove);
+                map.off('mouseup', onRightMouseUp);
+            }
             if (pinMarker) pinMarker.off('click', onMarkerClick);
             if (locationMarker) locationMarker.off('click', onMarkerClick);
             rightDrag = null;
