@@ -13,6 +13,10 @@
         html, body { height: 100%; }
         #map { height: 100%; width: 100%; }
         .leaflet-grab { cursor: pointer; }
+        /* 左下角控件间距 */
+        .leaflet-bottom.leaflet-left .leaflet-control-zoom {
+            margin-bottom: 30px;
+        }
         /* 图源切换控件美化 */
         .leaflet-control-layers {
             border-radius: 8px;
@@ -32,7 +36,7 @@
         .top-bar {
             position: absolute;
             top: 12px;
-            left: 12px;
+            right: 12px;
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -114,7 +118,7 @@
         /* Toast 弹窗 */
         .toast {
             position: fixed;
-            top: 20px;
+            top: 60px;
             right: 20px;
             padding: 12px 20px;
             background: #fff;
@@ -227,7 +231,7 @@
         // 添加图源切换控件（左上角）
         L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
 
-        // 添加比例尺（仅公制）
+        // 添加比例尺（仅公制，左下角缩放控件下方）
         L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
         // 实时显示鼠标经纬度（统一换算为 WGS-84）
