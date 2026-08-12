@@ -17,40 +17,14 @@
 ```
 WebMapsByLeaflet/
 ├── index.html          # 主应用文件
-├── lib/
-│   └── leaflet/        # Leaflet 库文件
-│       ├── leaflet.js
-│       ├── leaflet.css
-│       ├── images/
-│       └── svg/        # 图标资源
-├── 404/                # 404页面
-├── run.bat             # Windows启动脚本
-├── LICENSE             # BSD 2-Clause 许可证
-└── README.md           # 项目说明
+└── lib/leaflet/        # Leaflet 库文件    
+        ├── leaflet.js
+        ├── leaflet.css
+        └── svg/        # 图标资源
+
 ```
 
-## 快速开始
 
-### 方式一：使用启动脚本（Windows）
-```bash
-双击 run.bat
-```
-
-### 方式二：命令行启动
-```bash
-python -m http.server 80
-```
-
-### 方式三：使用其他HTTP服务器
-```bash
-# 使用 Node.js
-npx http-server -p 80
-
-# 使用 PHP
-php -S localhost:80
-```
-
-启动后访问 `http://localhost` 即可使用。
 
 ## 使用说明
 
