@@ -280,7 +280,7 @@
             <option value="google">Google 卫星</option>
             <option value="Arcgisonline">ArcGIS 卫星</option>
         </select>
-        <span class="crs-badge" id="crsName">WGS-84</span>
+        <span class="crs-badge" id="crsName">GCJ-02</span>
         <span class="sep"></span>
         <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
         <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
@@ -296,17 +296,17 @@
             'Arcgisonline': L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
                 attribution: '<a href="https://arcgisonline.com/">arcgisonline</a> contributors',
                 maxZoom: 19,
-                crs: 'gcj02'
+                crs: 'wgs84'
             }),
-            'google': L.tileLayer('http://mt{s}.google.com/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
+            'google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
                 maxZoom: 21,
                 subdomains: [0, 1, 2, 3],
                 crs: 'gcj02'
             })
         };
 
-        // 当前底图的坐标系
-        let currentCRS = 'wgs84';
+        // 当前底图的坐标系（默认底图为 google，是 GCJ-02 瓦片）
+        let currentCRS = 'gcj02';
 
         // ---------- WGS-84 与 GCJ-02 互转（标准算法） ----------
         function outOfChina(lat, lng) {
@@ -422,7 +422,9 @@
             pinBtn.classList.add('pinned');
             coords.classList.add('pinned');
             if (pinMarker) map.removeLayer(pinMarker);
-            pinMarker = L.marker([w.lat, w.lng], {icon: pinIcon}).addTo(map);
+            // 标记需放在地图/瓦片坐标系，pinnedW 仅用于显示与复制
+            const m = currentCRS === 'gcj02' ? wgs84ToGcj02(w.lat, w.lng) : w;
+            pinMarker = L.marker([m.lat, m.lng], {icon: pinIcon}).addTo(map);
             pinBtn.title = '取消固定';
         }
 
@@ -440,8 +442,9 @@
             pinBtn.title = '固定当前坐标';
         }
 
-        // 左键点击地图：固定该点经纬度
+        // 左键点击地图：固定该点经纬度（测量模式下不固定）
         map.on('click', function (e) {
+            if (measureMode) return;
             setPinned(toWgs84(e.latlng.lat, e.latlng.lng));
         });
 
@@ -562,35 +565,27 @@
         }
 
         // Toast 弹窗
+        let toastTimer = null;
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.classList.add('show');
-            setTimeout(function () {
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
                 toast.classList.remove('show');
             }, 1500);
         }
 
-        // 点击坐标复制到剪贴板
-
-
-        // 图层选择下拉框
-        layerSelect.addEventListener('change', function () {
-            const name = this.value;
-            if (baseMaps[name]) {
-                map.removeLayer(currentLayer);
-                currentLayer = baseMaps[name];
-                map.addLayer(currentLayer);
-            }
-        });
-
-        // 切换底图时：保持中心点物理位置不变（换算坐标系），并更新徽标
-        map.on('baselayerchange', function (e) {
-            const layer = e.layer;
+        // 图层选择下拉框：切换底图，保持中心点物理位置不变（换算坐标系），并更新徽标
+        function switchLayer(name) {
+            const layer = baseMaps[name];
+            if (!layer || layer === currentLayer) return;
             const nextCRS = layer.options.crs || 'wgs84';
-            document.getElementById('crsName').textContent = nextCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
-            layerSelect.value = e.name;
+            map.removeLayer(currentLayer);
             currentLayer = layer;
+            map.addLayer(currentLayer);
+            layerSelect.value = name;
+            document.getElementById('crsName').textContent = nextCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
 
             if (nextCRS !== currentCRS) {
                 const c = map.getCenter();
@@ -598,13 +593,16 @@
                 const target = nextCRS === 'gcj02' ? wgs84ToGcj02(wgs.lat, wgs.lng) : wgs;
                 map.setView([target.lat, target.lng], map.getZoom(), { animate: false });
                 // 已固定的标记同步换算，保持在同一物理位置
-                if (pinMarker) {
-                    const mwgs = pinnedW;
-                    const mt = nextCRS === 'gcj02' ? wgs84ToGcj02(mwgs.lat, mwgs.lng) : mwgs;
+                if (pinMarker && pinnedW) {
+                    const mt = nextCRS === 'gcj02' ? wgs84ToGcj02(pinnedW.lat, pinnedW.lng) : pinnedW;
                     pinMarker.setLatLng([mt.lat, mt.lng]);
                 }
                 currentCRS = nextCRS;
             }
+        }
+
+        layerSelect.addEventListener('change', function () {
+            switchLayer(this.value);
         });
     </script>
 </body>
