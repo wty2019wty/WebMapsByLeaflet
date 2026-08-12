@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web 地图 - Leaflet</title>
+    <title>WebMapsByLeaflet</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="lib/leaflet/leaflet.css">
     <!-- Leaflet JS -->
@@ -280,11 +280,7 @@
 <body>
     <div class="top-bar" id="topBar">
         <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 100%; height: 100%;"></span>
-        <select class="layer-select" id="layerSelect">
-            <option value="google镜像">Google镜像</option>
-            <option value="google">Google</option>
-            <option value="Arcgisonline">Arcgisonline</option>
-        </select>
+        <select class="layer-select" id="layerSelect"></select>
         <span class="crs-badge" id="crsName">GCJ-02</span>
         <span class="sep"></span>
         <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
@@ -303,24 +299,30 @@
             'google镜像': L.tileLayer('http://mt{s}.486520.xyz/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
                 maxZoom: 21,
                 subdomains: [0, 1, 2, 3],
-                crs: 'gcj02'
+                crs: 'gcj02',
+                label: 'Google 卫星镜像'
             }),
 
             'Arcgisonline': L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
                 attribution: '<a href="https://arcgisonline.com/">arcgisonline</a> contributors',
                 maxZoom: 19,
-                crs: 'wgs84'
+                crs: 'wgs84',
+                label: 'ArcGIS 卫星'
             }),
 
             'google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
                 maxZoom: 21,
                 subdomains: [0, 1, 2, 3],
-                crs: 'gcj02'
+                crs: 'gcj02',
+                label: 'Google 卫星'
             })
         };
 
-        // 当前底图的坐标系（默认底图为 google，是 GCJ-02 瓦片）
-        let currentCRS = 'gcj02';
+        // 默认底图（地图初始化与下拉框默认选中统一引用此配置）
+        const defaultLayerKey = 'google镜像';
+
+        // 当前底图的坐标系（由默认底图推导）
+        let currentCRS = baseMaps[defaultLayerKey].options.crs || 'wgs84';
 
         // ---------- WGS-84 与 GCJ-02 互转（标准算法） ----------
         function outOfChina(lat, lng) {
@@ -369,12 +371,12 @@
             return currentCRS === 'gcj02' ? gcj02ToWgs84(lat, lng) : { lat: lat, lng: lng };
         }
 
-        // 初始化地图，默认使用 google 卫星影像
+        // 初始化地图，默认使用 defaultLayerKey 指定的底图
         const map = L.map('map', {
             center: [30, 110],
             zoom: 4,
             zoomControl: false, // 禁用默认左上角缩放控件
-            layers: [baseMaps['google']]
+            layers: [baseMaps[defaultLayerKey]]
         });
 
         // 自定义图标
@@ -404,11 +406,21 @@
         const coords = document.getElementById('coords');
         const pinBtn = document.getElementById('pinBtn');
         const layerSelect = document.getElementById('layerSelect');
+
+        // 根据图源配置动态生成下拉选项，默认选中 defaultLayerKey
+        Object.keys(baseMaps).forEach(function (name) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = baseMaps[name].options.label || name;
+            layerSelect.appendChild(opt);
+        });
+        layerSelect.value = defaultLayerKey;
+
         let pinned = false;
         let pinnedPoint = null;
         let pinMarker = null;
         let lastHover = null;
-        let currentLayer = baseMaps['google'];
+        let currentLayer = baseMaps[defaultLayerKey];
 
         map.on('mousemove', function (e) {
             if (pinned) return;
@@ -643,7 +655,6 @@
         // 图层选择下拉框：切换底图，保持中心点物理位置不变（换算坐标系），并更新徽标
         function switchLayer(name) {
             const layer = baseMaps[name];
-            console.log('[switchLayer] 选择:', name, '| 找到图层:', !!layer, '| 当前图层:', (currentLayer && currentLayer._url || ''));
             if (!layer || layer === currentLayer) return;
             const nextCRS = layer.options.crs || 'wgs84';
             map.removeLayer(currentLayer);
