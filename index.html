@@ -11,36 +11,10 @@
     <script src="lib/leaflet/leaflet.js"></script>
     <style>
         :root {
-            --icon-size-sm: 20px;
-            --icon-size-md: 24px;
-            --icon-size-lg: 32px;
-            --icon-size-xl: 36px;
-        }
-
-        @media (min-width: 768px) {
-            :root {
-                --icon-size-sm: 24px;
-                --icon-size-md: 28px;
-                --icon-size-lg: 36px;
-                --icon-size-xl: 40px;
-            }
-            .top-bar .coords,
-            .top-bar .loc-coords {
-                width: 268px;
-            }
-        }
-
-        @media (min-width: 1200px) {
-            :root {
-                --icon-size-sm: 28px;
-                --icon-size-md: 32px;
-                --icon-size-lg: 40px;
-                --icon-size-xl: 44px;
-            }
-            .top-bar .coords,
-            .top-bar .loc-coords {
-                width: 272px;
-            }
+            --icon-size-sm: 24px;
+            --icon-size-md: 28px;
+            --icon-size-lg: 36px;
+            --icon-size-xl: 40px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -333,12 +307,13 @@
         }
 
         /* ========== 移动端适配 ========== */
-        @media (max-width: 767px) {
+        /* ========== 移动端适配 (max-width: 1080px) ========== */
+        @media (max-width: 1080px) {
             :root {
-                --icon-size-sm: 22px;
-                --icon-size-md: 30px;
-                --icon-size-lg: 34px;
-                --icon-size-xl: 38px;
+                --icon-size-sm: 20px;
+                --icon-size-md: 24px;
+                --icon-size-lg: 32px;
+                --icon-size-xl: 36px;
             }
 
             html {
@@ -358,13 +333,13 @@
                 border-radius: 16px;
                 flex-direction: column;
                 align-items: stretch;
-                gap: 8px;
-                padding: 10px 12px;
+                gap: 6px;
+                padding: 8px 10px;
             }
             .top-bar .row {
                 width: 100%;
                 min-width: 0;
-                gap: 10px;
+                gap: 8px;
             }
             .top-bar .sep { display: none; }
             .top-bar .layer-select {
