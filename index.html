@@ -354,11 +354,11 @@
                 overflow: hidden;
             }
             .top-bar .bar-body {
-                /* 覆盖桌面端的 display: contents，恢复块级盒子以支持 max-height 折叠 */
+                /* 覆盖桌面端的 display: contents，恢复块级盒子以便淡入淡出 */
                 display: block;
-                /* 高度折叠用 max-height 数值过渡（JS 测量内容高度），全浏览器可靠流畅 */
-                overflow: hidden;
-                transition: max-height var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
+                /* 收起/展开不做高度折叠：高度始终由内容 auto 撑开，永无裁切；
+                   内容淡入/淡出由 opacity 控制，与宽度过渡叠加成优雅的胶囊收展 */
+                transition: opacity 0.25s ease 0.35s;
             }
             .top-bar .bar-inner {
                 display: flex;
@@ -441,7 +441,7 @@
             }
 
             /* 移动端 top-bar 收起/展开按钮（layers 图标）：
-               高度由 bar-body 的 max-height 折叠（JS 测量内容高度），宽度右缘锚定向左收缩；
+               高度始终由内容 auto 撑开（无折叠、永无裁切），内容淡入淡出 + 宽度右缘锚定向左收缩；
                按钮固定右上角（top 4px 对齐、right 2px），收起时 top-bar 收缩到刚好包裹按钮 */
             .top-bar .bar-toggle {
                 position: absolute;
@@ -461,6 +461,12 @@
             }
             .top-bar .bar-toggle:active {
                 transform: scale(0.9);
+            }
+            /* 收起：内容立即淡出后收缩；展开：宽度撑开时内容保持隐藏，撑开后延迟淡入（逆过程） */
+            .top-bar.collapsing .bar-body,
+            .top-bar.expanding .bar-body {
+                opacity: 0;
+                transition: opacity 0.15s ease;
             }
             .top-bar.collapsed {
                 width: 48px;
@@ -657,13 +663,13 @@
         });
 
         // ---------- 移动端 top-bar 收起/展开（layers 图标按钮） ----------
-        // 宽度动画由 CSS 完成（width 过渡 + 右缘锚定）；高度动画用 max-height 数值过渡，
-        // JS 精确测量内容高度，全浏览器可靠；收起/展开互为逆过程
+        // 高度始终 auto（内容撑开，永无裁切）；动画只做内容淡入淡出 + 宽度/圆角收缩，
+        // 收起 = 淡出→隐藏内容→胶囊向左收缩；展开 = 恢复内容(透明)→宽度撑开→内容淡入
         const topBarEl = document.getElementById('topBar');
         const barToggle = document.getElementById('barToggle');
         const barBody = topBarEl.querySelector('.bar-body');
-        const barInner = topBarEl.querySelector('.bar-inner');
         let barCollapsed = false;
+        let barAnimTimer = null;
 
         const BAR_PX_MS = 0.6;   // 每像素耗时（ms），可调
         const BAR_MAX_MS = 900;  // 最大时长，避免超大屏动画过慢
@@ -673,41 +679,35 @@
             topBarEl.style.setProperty('--bar-dur-w', t + 'ms');
         }
 
-        let barEndHandler = null;
-        function clearBarEnd() {
-            if (barEndHandler) {
-                barBody.removeEventListener('transitionend', barEndHandler);
-                barEndHandler = null;
-            }
-        }
-
         // 收起面板（带 CSS 动画）
         function collapseBar() {
+            if (barCollapsed) return;
             setBarDuration();
-            clearBarEnd();
-            barBody.style.maxHeight = barInner.offsetHeight + 'px';
-            void barBody.offsetHeight;
-            barBody.style.maxHeight = '0px';
-            topBarEl.classList.add('collapsed');
+            clearTimeout(barAnimTimer);
+            topBarEl.classList.add('collapsing');
+            barAnimTimer = setTimeout(function () {
+                barBody.style.display = 'none';
+                topBarEl.classList.remove('collapsing');
+                topBarEl.classList.add('collapsed');
+            }, 150);
             barToggle.title = '展开面板';
             barCollapsed = true;
         }
 
         // 展开面板（带 CSS 动画）
         function expandBar() {
+            if (!barCollapsed) return;
             setBarDuration();
-            clearBarEnd();
-            barBody.style.maxHeight = '0px';
+            clearTimeout(barAnimTimer);
+            barBody.style.display = '';
+            topBarEl.classList.add('expanding');
             topBarEl.classList.remove('collapsed');
-            void barBody.offsetHeight;
-            barBody.style.maxHeight = barInner.offsetHeight + 'px';
-            barEndHandler = function (e) {
-                if (e.target === barBody && e.propertyName === 'max-height') {
-                    barBody.style.maxHeight = 'none';
-                    clearBarEnd();
-                }
-            };
-            barBody.addEventListener('transitionend', barEndHandler);
+            // 宽度开始撑开，等两帧后让内容延迟淡入（基础过渡 0.25s/0.35s 自带延迟）
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    topBarEl.classList.remove('expanding');
+                });
+            });
             barToggle.title = '收起面板';
             barCollapsed = false;
         }
@@ -717,6 +717,21 @@
                 expandBar();
             } else {
                 collapseBar();
+            }
+        });
+
+        // 移动端首次加载：等待页面渲染稳定后自动收起，让出地图视野（动画与点击收起一致）
+        if (window.innerWidth <= 1080) {
+            setTimeout(collapseBar, 600);
+        }
+
+        // 切回桌面宽度时撤销收起状态，避免影响桌面布局
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 1080 && barCollapsed) {
+                barCollapsed = false;
+                clearTimeout(barAnimTimer);
+                topBarEl.classList.remove('collapsed', 'collapsing', 'expanding');
+                barBody.style.display = '';
             }
         });
 
