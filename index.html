@@ -97,6 +97,10 @@
             outline: none;
             padding: 2px 4px;
         }
+        .top-bar .layer-select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .top-bar .crs-badge {
             font-size: 12px;
             font-weight: 700;
@@ -277,7 +281,6 @@
     <div class="top-bar" id="topBar">
         <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 100%; height: 100%;"></span>
         <select class="layer-select" id="layerSelect">
-            <option value="google镜像">Google 卫星镜像</option>
             <option value="google">Google 卫星</option>
             <option value="Arcgisonline">ArcGIS 卫星</option>
         </select>
@@ -360,7 +363,7 @@
             return { lat: 2 * lat - wgs.lat, lng: 2 * lng - wgs.lng };
         }
 
-        // 将经纬度转到 WGS-84（用于显示）
+        // 将当前底图坐标系下的经纬度转到 WGS-84（用于测量计算真实距离）
         function toWgs84(lat, lng) {
             return currentCRS === 'gcj02' ? gcj02ToWgs84(lat, lng) : { lat: lat, lng: lng };
         }
@@ -396,21 +399,23 @@
             e.stopPropagation();
         });
 
-        // 实时显示鼠标经纬度（统一换算为 WGS-84）
+        // 实时显示当前底图坐标系下的鼠标经纬度
         const coords = document.getElementById('coords');
         const pinBtn = document.getElementById('pinBtn');
         const layerSelect = document.getElementById('layerSelect');
         let pinned = false;
-        let pinnedW = null;
+        let pinnedPoint = null;
         let pinMarker = null;
+        let lastHover = null;
         let currentLayer = baseMaps['google'];
 
         map.on('mousemove', function (e) {
             if (pinned) return;
-            const w = toWgs84(e.latlng.lat, e.latlng.lng);
-            coords.textContent = formatCoords(w.lat, w.lng);
+            lastHover = { lat: e.latlng.lat, lng: e.latlng.lng };
+            coords.textContent = formatCoords(lastHover.lat, lastHover.lng);
         });
         map.on('mouseout', function () {
+            rightDrag = null;
             if (pinned) return;
             coords.textContent = '纬度 --  经度 --';
         });
@@ -419,29 +424,27 @@
         function formatCoords(lat, lng) {
             const latD = lat >= 0 ? 'N' : 'S';
             const lngD = lng >= 0 ? 'E' : 'W';
-            const crsLabel = currentCRS === 'gcj02' ? 'GCJ02' : 'WGS84';
+            const crsLabel = currentCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
             return '【' + crsLabel + '】' + Math.abs(lat).toFixed(8) + '°' + latD +
                 '，' + Math.abs(lng).toFixed(8) + '°' + lngD;
         }
 
-        // 固定坐标（显示 + 标记）
-        function setPinned(w) {
+        // 固定坐标（p 为当前底图坐标系下的坐标，显示与标记位置保持一致）
+        function setPinned(p) {
             pinned = true;
-            pinnedW = w;
-            coords.textContent = formatCoords(w.lat, w.lng);
+            pinnedPoint = { lat: p.lat, lng: p.lng };
+            coords.textContent = formatCoords(p.lat, p.lng);
             pinBtn.classList.add('pinned');
             coords.classList.add('pinned');
             if (pinMarker) map.removeLayer(pinMarker);
-            // 标记需放在地图/瓦片坐标系，pinnedW 仅用于显示与复制
-            const m = currentCRS === 'gcj02' ? wgs84ToGcj02(w.lat, w.lng) : w;
-            pinMarker = L.marker([m.lat, m.lng], {icon: pinIcon}).addTo(map);
+            pinMarker = L.marker([p.lat, p.lng], {icon: pinIcon}).addTo(map);
             pinBtn.title = '取消固定';
         }
 
         // 取消固定
         function clearPinned() {
             pinned = false;
-            pinnedW = null;
+            pinnedPoint = null;
             coords.textContent = '纬度 --  经度 --';
             pinBtn.classList.remove('pinned');
             coords.classList.remove('pinned');
@@ -455,7 +458,7 @@
         // 左键点击地图：固定该点经纬度（测量模式下不固定）
         map.on('click', function (e) {
             if (measureMode) return;
-            setPinned(toWgs84(e.latlng.lat, e.latlng.lng));
+            setPinned({ lat: e.latlng.lat, lng: e.latlng.lng });
         });
 
         // 右键点击地图：取消固定（测量模式下右键用于拖动地图，不取消固定）
@@ -466,19 +469,21 @@
             }
         });
 
-        // 📌 按钮：固定/取消固定当前地图中心
+        // 固定按钮：固定最近悬停位置 / 取消固定
         pinBtn.addEventListener('click', function () {
             if (pinned) {
                 clearPinned();
             } else {
-                setPinned(toWgs84(map.getCenter().lat, map.getCenter().lng));
+                // 固定最近一次鼠标悬停位置；若从未在地图上悬停则固定地图中心
+                const c = lastHover || { lat: map.getCenter().lat, lng: map.getCenter().lng };
+                setPinned(c);
             }
         });
 
         // 复制按钮
         const copyBtn = document.getElementById('copyBtn');
         copyBtn.addEventListener('click', async function () {
-            const text = pinned ? formatCoords(pinnedW.lat, pinnedW.lng) : coords.textContent;
+            const text = pinned ? formatCoords(pinnedPoint.lat, pinnedPoint.lng) : coords.textContent;
             if (!text || text.indexOf('--') !== -1) return;
             try {
                 await navigator.clipboard.writeText(text);
@@ -509,6 +514,7 @@
             measureBtn.classList.add('pinned');
             measureBtn.title = '退出测量';
             map.getContainer().style.cursor = 'crosshair';
+            layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
             map.doubleClickZoom.disable();
             map.on('click', onMeasureClick);
             map.on('dblclick', onMeasureDoubleClick);
@@ -523,6 +529,7 @@
             measureBtn.classList.remove('pinned');
             measureBtn.title = '测量距离';
             map.getContainer().style.cursor = '';
+            layerSelect.disabled = false;
             map.off('click', onMeasureClick);
             map.off('dblclick', onMeasureDoubleClick);
             map.doubleClickZoom.enable();
@@ -590,7 +597,10 @@
             if (measurePoints.length < 2) return;
             let totalDistance = 0;
             for (let i = 1; i < measurePoints.length; i++) {
-                totalDistance += measurePoints[i - 1].distanceTo(measurePoints[i]);
+                // 统一换算为 WGS-84 计算真实距离，避免 GCJ-02 偏移造成的误差
+                const a = toWgs84(measurePoints[i - 1].lat, measurePoints[i - 1].lng);
+                const b = toWgs84(measurePoints[i].lat, measurePoints[i].lng);
+                totalDistance += L.latLng(a.lat, a.lng).distanceTo(L.latLng(b.lat, b.lng));
             }
             const lastPoint = measurePoints[measurePoints.length - 1];
             let distanceText;
@@ -645,10 +655,13 @@
                 const wgs = currentCRS === 'gcj02' ? gcj02ToWgs84(c.lat, c.lng) : { lat: c.lat, lng: c.lng };
                 const target = nextCRS === 'gcj02' ? wgs84ToGcj02(wgs.lat, wgs.lng) : wgs;
                 map.setView([target.lat, target.lng], map.getZoom(), { animate: false });
-                // 已固定的标记同步换算，保持在同一物理位置
-                if (pinMarker && pinnedW) {
-                    const mt = nextCRS === 'gcj02' ? wgs84ToGcj02(pinnedW.lat, pinnedW.lng) : pinnedW;
+                // 已固定的标记同步换算，保持在同一物理位置，并更新显示坐标
+                if (pinMarker && pinnedPoint) {
+                    const pw = currentCRS === 'gcj02' ? gcj02ToWgs84(pinnedPoint.lat, pinnedPoint.lng) : { lat: pinnedPoint.lat, lng: pinnedPoint.lng };
+                    const mt = nextCRS === 'gcj02' ? wgs84ToGcj02(pw.lat, pw.lng) : pw;
                     pinMarker.setLatLng([mt.lat, mt.lng]);
+                    pinnedPoint = { lat: mt.lat, lng: mt.lng };
+                    coords.textContent = formatCoords(mt.lat, mt.lng);
                 }
                 currentCRS = nextCRS;
             }
