@@ -170,7 +170,11 @@
             background-position: center;
             background-repeat: no-repeat;
             background-color: transparent;
-            border: none;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
+            outline: none;
+            box-shadow: none;
             width: 30px;
             height: 30px;
         }
@@ -180,15 +184,15 @@
             background-position: center;
             background-repeat: no-repeat;
             background-color: transparent;
-            border: none;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
+            outline: none;
+            box-shadow: none;
             width: 30px;
             height: 30px;
         }
-        .leaflet-control-zoom {
-            background: transparent;
-            border: none;
-            box-shadow: none;
-        }
+
 
         .measure-tooltip {
             background: rgba(239, 68, 68, 0.9);
@@ -199,6 +203,39 @@
             font-size: 12px;
             font-family: system-ui, sans-serif;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        /* 彻底清除缩放控件白色缝隙 */
+        .leaflet-control-zoom.leaflet-bar {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out {
+            border: none !important;
+            background: transparent !important;
+            color: #fff !important;
+            outline: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-size: 24px 24px !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        }
+
+        .leaflet-control-zoom-in {
+            background-image: url('lib/leaflet/svg/add-square-svgrepo-com.svg') !important;
+        }
+
+        .leaflet-control-zoom-out {
+            background-image: url('lib/leaflet/svg/minus-square-svgrepo-com.svg') !important;
+        }
+
+        /* 去除按钮之间分割线 */
+        .leaflet-control-zoom a {
+            border-bottom: none !important;
         }
     </style>
 </head>
