@@ -448,8 +448,9 @@
             setPinned(toWgs84(e.latlng.lat, e.latlng.lng));
         });
 
-        // 右键点击地图：取消固定
+        // 右键点击地图：取消固定（测量模式下右键用于拖动地图，不取消固定）
         map.on('contextmenu', function (e) {
+            if (measureMode) return;
             if (pinned) {
                 clearPinned();
             }
@@ -482,6 +483,7 @@
         let measurePoints = [];
         let measureLine = null;
         let measureTooltip = null;
+        let rightDrag = null;
         const measureBtn = document.getElementById('measureBtn');
 
         measureBtn.addEventListener('click', function () {
@@ -497,8 +499,13 @@
             measureBtn.classList.add('pinned');
             measureBtn.title = '退出测量';
             map.getContainer().style.cursor = 'crosshair';
+            map.doubleClickZoom.disable();
             map.on('click', onMeasureClick);
             map.on('dblclick', onMeasureDoubleClick);
+            map.getContainer().addEventListener('contextmenu', preventContextMenu);
+            map.on('mousedown', onRightMouseDown);
+            map.on('mousemove', onRightMouseMove);
+            map.on('mouseup', onRightMouseUp);
         }
 
         function exitMeasureMode() {
@@ -508,10 +515,46 @@
             map.getContainer().style.cursor = '';
             map.off('click', onMeasureClick);
             map.off('dblclick', onMeasureDoubleClick);
+            map.doubleClickZoom.enable();
+            map.getContainer().removeEventListener('contextmenu', preventContextMenu);
+            map.off('mousedown', onRightMouseDown);
+            map.off('mousemove', onRightMouseMove);
+            map.off('mouseup', onRightMouseUp);
+            rightDrag = null;
             clearMeasure();
         }
 
+        function preventContextMenu(e) {
+            e.preventDefault();
+        }
+
+        // 测量模式下右键拖拽平移地图
+        function onRightMouseDown(e) {
+            const oe = e.originalEvent;
+            if (oe.button === 2) {
+                rightDrag = { x: oe.clientX, y: oe.clientY };
+                L.DomEvent.stop(e);
+            }
+        }
+
+        function onRightMouseMove(e) {
+            if (!rightDrag) return;
+            const oe = e.originalEvent;
+            const dx = oe.clientX - rightDrag.x;
+            const dy = oe.clientY - rightDrag.y;
+            rightDrag = { x: oe.clientX, y: oe.clientY };
+            map.panBy([-dx, -dy], { animate: false });
+        }
+
+        function onRightMouseUp(e) {
+            if (e.originalEvent.button === 2) {
+                rightDrag = null;
+            }
+        }
+
         function onMeasureClick(e) {
+            // 双击会先触发两次 click，忽略第二次（detail>=2），避免末端误加重复点
+            if (e.originalEvent && e.originalEvent.detail >= 2) return;
             measurePoints.push(e.latlng);
             if (measurePoints.length === 1) {
                 // 第一个点，创建线
