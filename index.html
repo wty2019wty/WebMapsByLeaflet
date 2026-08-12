@@ -493,6 +493,7 @@
         });
         map.on('mouseout', function () {
             rightDrag = null;
+            removePreviewLine();
             if (pinned) return;
             coords.textContent = '纬度 --  经度 --';
         });
@@ -646,6 +647,7 @@
         let measureMode = false;
         let measurePoints = [];
         let measureLine = null;
+        let measurePreviewLine = null;
         let measureTooltip = null;
         let rightDrag = null;
         const measureBtn = document.getElementById('measureBtn');
@@ -723,12 +725,18 @@
         }
 
         function onRightMouseMove(e) {
-            if (!rightDrag) return;
-            const oe = e.originalEvent;
-            const dx = oe.clientX - rightDrag.x;
-            const dy = oe.clientY - rightDrag.y;
-            rightDrag = { x: oe.clientX, y: oe.clientY };
-            map.panBy([-dx, -dy], { animate: false });
+            if (rightDrag) {
+                const oe = e.originalEvent;
+                const dx = oe.clientX - rightDrag.x;
+                const dy = oe.clientY - rightDrag.y;
+                rightDrag = { x: oe.clientX, y: oe.clientY };
+                map.panBy([-dx, -dy], { animate: false });
+                return;
+            }
+            // 非拖拽时：已有测量点时，显示最后点到光标的预览线
+            if (measurePoints.length > 0) {
+                updatePreviewLine(e.latlng);
+            }
         }
 
         function onRightMouseUp(e) {
@@ -768,8 +776,36 @@
                 // 更新线
                 measureLine.setLatLngs(measurePoints);
             }
+            // 加点后预览线以新点为起点，重新跟随光标
+            updatePreviewLine(latlng);
             // 更新距离提示
             updateMeasureTooltip();
+        }
+
+        // 更新最后测量点到光标的预览线
+        function updatePreviewLine(latlng) {
+            if (measurePoints.length === 0) {
+                removePreviewLine();
+                return;
+            }
+            const last = measurePoints[measurePoints.length - 1];
+            if (!measurePreviewLine) {
+                measurePreviewLine = L.polyline([last, latlng], {
+                    color: '#ef4444',
+                    weight: 2,
+                    dashArray: '5,5',
+                    opacity: 0.5
+                }).addTo(map);
+            } else {
+                measurePreviewLine.setLatLngs([last, latlng]);
+            }
+        }
+
+        function removePreviewLine() {
+            if (measurePreviewLine) {
+                map.removeLayer(measurePreviewLine);
+                measurePreviewLine = null;
+            }
         }
 
         function onMeasureDoubleClick(e) {
@@ -808,6 +844,7 @@
                 map.removeLayer(measureLine);
                 measureLine = null;
             }
+            removePreviewLine();
             if (measureTooltip) {
                 map.removeLayer(measureTooltip);
                 measureTooltip = null;
