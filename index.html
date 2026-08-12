@@ -415,16 +415,18 @@
             }
 
             /* 移动端 top-bar 收起/展开按钮（layers 图标） */
+            /* 宽度与高度采用不同速率，展开/收起时形成沿对角线斜向的节奏 */
             .top-bar {
                 transition:
-                    height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 overflow: hidden;
             }
             .top-bar .row {
-                transition: opacity 0.15s ease, transform 0.15s ease;
+                /* 展开时内容延迟淡入，与宽高撑开节奏配合（收起时由 collapsing 覆盖为立即淡出） */
+                transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
             }
             .top-bar .bar-toggle {
                 display: flex;
@@ -444,11 +446,15 @@
                 transform: scale(0.9);
             }
 
-            /* 收起过程：内容行淡出，top-bar 以右缘为轴（right 固定）收缩为右上角圆形按钮 */
-            .top-bar.collapsing .row,
-            .top-bar.expanding .row {
+            /* 收起：内容立即淡出后收缩为圆形按钮；展开：撑开过程中内容延迟淡入（逆过程） */
+            .top-bar.collapsing .row {
                 opacity: 0;
                 transform: scale(0.95);
+                transition: opacity 0.15s ease, transform 0.15s ease;
+            }
+            .top-bar.expanding .row {
+                opacity: 0;
+                transform: none;
             }
             .top-bar.collapsed {
                 width: 48px;
@@ -664,7 +670,7 @@
 
         barToggle.addEventListener('click', function () {
             if (barCollapsed) {
-                // 展开：内容全程隐藏，宽高从 48px 平滑撑开到全尺寸后，内容再淡入
+                // 展开（收起的逆过程）：从 48px 圆钮向左下撑开，内容在撑开过程中延迟淡入
                 topBarEl.classList.add('expanding');
                 topBarEl.classList.remove('collapsed');
                 topBarEl.style.width = '';
@@ -677,11 +683,15 @@
                 void topBarEl.offsetHeight;
                 topBarEl.style.width = fullW + 'px';
                 topBarEl.style.height = fullH + 'px';
+                // 下一帧移除 expanding：内容在撑开过程中延迟淡入（CSS 过渡 delay 控制时机）
+                requestAnimationFrame(function () {
+                    topBarEl.classList.remove('expanding');
+                });
                 topBarEl.addEventListener('transitionend', function onEnd(e) {
-                    if (e.target === topBarEl && e.propertyName === 'height') {
+                    // 宽度比高度慢，等最慢的宽度过渡结束后再清理内联样式，避免中断
+                    if (e.target === topBarEl && e.propertyName === 'width') {
                         topBarEl.style.width = '';
                         topBarEl.style.height = '';
-                        topBarEl.classList.remove('expanding');
                         topBarEl.removeEventListener('transitionend', onEnd);
                     }
                 });
