@@ -25,7 +25,7 @@
                 --icon-size-xl: 40px;
             }
             .top-bar .coords {
-                min-width: 260px;
+                width: 268px;
             }
         }
 
@@ -37,7 +37,7 @@
                 --icon-size-xl: 44px;
             }
             .top-bar .coords {
-                min-width: 280px;
+                width: 272px;
             }
         }
 
@@ -128,7 +128,7 @@
             border-radius: 6px;
             padding: 2px 6px;
             transition: background 0.2s;
-            min-width: 240px;
+            width: 264px;
             text-align: center;
             display: inline-block;
         }
@@ -436,13 +436,17 @@
             coords.textContent = '纬度 --  经度 --';
         });
 
-        // 格式化坐标文本
-        function formatCoords(lat, lng) {
+        // 格式化坐标文本（withCrs 为 true 时附加坐标系前缀，用于复制）
+        function formatCoords(lat, lng, withCrs) {
             const latD = lat >= 0 ? 'N' : 'S';
             const lngD = lng >= 0 ? 'E' : 'W';
-            const crsLabel = currentCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
-            return '【' + crsLabel + '】' + Math.abs(lat).toFixed(8) + '°' + latD +
+            let s = Math.abs(lat).toFixed(8) + '°' + latD +
                 '，' + Math.abs(lng).toFixed(8) + '°' + lngD;
+            if (withCrs) {
+                const crsLabel = currentCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
+                s = '【' + crsLabel + '】' + s;
+            }
+            return s;
         }
 
         // 固定坐标（p 为当前底图坐标系下的坐标，显示与标记位置保持一致）
@@ -499,7 +503,9 @@
         // 复制按钮
         const copyBtn = document.getElementById('copyBtn');
         copyBtn.addEventListener('click', async function () {
-            const text = pinned ? formatCoords(pinnedPoint.lat, pinnedPoint.lng) : coords.textContent;
+            const text = pinned
+                ? formatCoords(pinnedPoint.lat, pinnedPoint.lng, true)
+                : (lastHover ? formatCoords(lastHover.lat, lastHover.lng, true) : coords.textContent);
             if (!text || text.indexOf('--') !== -1) return;
             try {
                 await navigator.clipboard.writeText(text);
