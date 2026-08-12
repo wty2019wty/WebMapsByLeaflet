@@ -346,24 +346,20 @@
                 align-items: stretch;
                 gap: 6px;
                 padding: 8px 10px;
-                /* 收起/展开过渡：宽度按右缘锚定向左收缩，高度随内容由 grid 折叠实时跟随，各属性同步结束 */
                 transition:
-                    width var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
-                    padding var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
-                    border-radius var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
+                    width var(--bar-dur, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
+                    padding var(--bar-dur, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
+                    border-radius var(--bar-dur, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
                 overflow: hidden;
             }
             .top-bar .bar-body {
-                /* 覆盖桌面端的 display: contents；展开态完全正常流式渲染（高度 auto，无折叠） */
                 display: block;
-                /* 收起/展开时内容淡入淡出，与宽度收缩叠加成优雅动画 */
                 transition: opacity 0.2s ease;
             }
             .top-bar .bar-inner {
                 display: flex;
                 flex-direction: column;
                 gap: 6px;
-                /* 右侧为常驻收起按钮留白，避免遮挡内容 */
                 padding-right: 50px;
             }
             .top-bar .row {
@@ -440,7 +436,7 @@
             }
 
             /* 移动端 top-bar 收起/展开按钮（layers 图标）：
-               高度始终由内容 auto 撑开（无折叠、永无裁切），内容淡入淡出 + 宽度右缘锚定向左收缩；
+               高度始终由内容 auto 撑开（无折叠、无裁切），内容淡入淡出 + 宽度右缘锚定向左收缩；
                按钮固定右上角（top 4px 对齐、right 2px），收起时 top-bar 收缩到刚好包裹按钮 */
             .top-bar .bar-toggle {
                 position: absolute;
@@ -461,11 +457,10 @@
             .top-bar .bar-toggle:active {
                 transform: scale(0.9);
             }
-            /* 收起：内容先淡出再整体隐藏；展开：内容透明恢复后宽度撑开再淡入（逆过程） */
-            .top-bar.collapsing .bar-body,
-            .top-bar.expanding .bar-body {
+            /* 收起：内容淡出与宽度收缩同时进行；展开：宽度撑开后内容淡入 */
+            .top-bar.collapsing .bar-body {
                 opacity: 0;
-                transition: opacity 0.15s ease;
+                transition: opacity 0.18s ease;
             }
             .top-bar.collapsed {
                 width: 48px;
@@ -476,6 +471,9 @@
             }
             .top-bar.collapsed .bar-body {
                 display: none;
+            }
+            .top-bar.expanding .bar-body {
+                opacity: 0;
             }
             /* 收起后按钮精确居中，与圆形外框同心（2px 圆环留白） */
             .top-bar.collapsed .bar-toggle {
@@ -670,73 +668,79 @@
         });
 
         // ---------- 移动端 top-bar 收起/展开（layers 图标按钮） ----------
-        // 展开态内容完全正常流式渲染（高度 auto，无折叠、无裁切）；收起时内容先淡出再整体
-        // display:none，宽度右缘锚定向左收缩到包裹按钮；展开为逆过程。JS 仅做状态与淡出/淡入编排
+        // 高度始终 auto（内容撑开，无裁切）；收起时 opacity 淡出与 width 收缩同步进行，
+        // 淡出完成后 display:none 隐藏内容；展开时 width 撑开后内容淡入。
         const topBarEl = document.getElementById('topBar');
         const barToggle = document.getElementById('barToggle');
         const barBody = topBarEl.querySelector('.bar-body');
         let barCollapsed = false;
         let barAnimTimer = null;
+        let barExpandEnd = null;
 
-        const BAR_PX_MS = 0.6;   // 每像素耗时（ms），可调
-        const BAR_MAX_MS = 900;  // 最大时长，避免超大屏动画过慢
+        const BAR_PX_MS = 0.6;
+        const BAR_MAX_MS = 900;
 
         function setBarDuration() {
-            const t = Math.min(Math.round((topBarEl.offsetWidth - 48) * BAR_PX_MS), BAR_MAX_MS);
-            topBarEl.style.setProperty('--bar-dur-w', t + 'ms');
+            var t = Math.min(Math.round((topBarEl.offsetWidth - 48) * BAR_PX_MS), BAR_MAX_MS);
+            topBarEl.style.setProperty('--bar-dur', t + 'ms');
         }
 
-        // 收起面板（带 CSS 动画）：内容淡出 → 整体隐藏 → 胶囊向左收缩
+        function clearExpandEnd() {
+            if (barExpandEnd) {
+                topBarEl.removeEventListener('transitionend', barExpandEnd);
+                barExpandEnd = null;
+            }
+        }
+
+        // 收起：opacity 淡出与 width 收缩同时启动，淡出完成后隐藏内容
         function collapseBar() {
             if (barCollapsed) return;
             setBarDuration();
             clearTimeout(barAnimTimer);
-            topBarEl.classList.add('collapsing');
+            clearExpandEnd();
+            topBarEl.classList.add('collapsing', 'collapsed');
+            barToggle.title = '展开面板';
+            barCollapsed = true;
             barAnimTimer = setTimeout(function () {
                 barBody.style.display = 'none';
                 topBarEl.classList.remove('collapsing');
-                topBarEl.classList.add('collapsed');
-            }, 150);
-            barToggle.title = '展开面板';
-            barCollapsed = true;
+            }, 200);
         }
 
-        // 展开面板（带 CSS 动画）：内容透明恢复 → 胶囊向左撑开 → 内容淡入
+        // 展开：恢复内容（透明），width 撑开完成后内容淡入
         function expandBar() {
             if (!barCollapsed) return;
-            // 收起时已按展开宽度设置 --bar-dur-w，展开沿用即可保证动画对称
             clearTimeout(barAnimTimer);
+            clearExpandEnd();
             barBody.style.display = '';
             topBarEl.classList.add('expanding');
             topBarEl.classList.remove('collapsed');
-            // 等两帧让宽度开始撑开、内容布局稳定后，移除 expanding 触发淡入
-            requestAnimationFrame(function () {
-                requestAnimationFrame(function () {
-                    topBarEl.classList.remove('expanding');
-                });
-            });
             barToggle.title = '收起面板';
             barCollapsed = false;
+            barExpandEnd = function (e) {
+                if (e.target === topBarEl && e.propertyName === 'width') {
+                    clearExpandEnd();
+                    topBarEl.classList.remove('expanding');
+                }
+            };
+            topBarEl.addEventListener('transitionend', barExpandEnd);
         }
 
         barToggle.addEventListener('click', function () {
-            if (barCollapsed) {
-                expandBar();
-            } else {
-                collapseBar();
-            }
+            barCollapsed ? expandBar() : collapseBar();
         });
 
-        // 移动端首次加载：等待页面渲染稳定后自动收起，让出地图视野（动画与点击收起一致）
         if (window.innerWidth <= 1080) {
             setTimeout(collapseBar, 600);
         }
 
-        // 切回桌面宽度时撤销收起状态，避免影响桌面布局
         window.addEventListener('resize', function () {
             if (window.innerWidth > 1080 && barCollapsed) {
                 barCollapsed = false;
-                topBarEl.classList.remove('collapsed');
+                clearTimeout(barAnimTimer);
+                clearExpandEnd();
+                topBarEl.classList.remove('collapsed', 'collapsing', 'expanding');
+                barBody.style.display = '';
             }
         });
 
