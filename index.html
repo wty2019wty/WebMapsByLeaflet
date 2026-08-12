@@ -218,6 +218,8 @@
             box-shadow: none;
             width: var(--icon-size-md);
             height: var(--icon-size-md);
+            color: transparent;
+            font-size: 0;
         }
         .leaflet-control-zoom-out {
             background-image: url('lib/leaflet/svg/minus-square-svgrepo-com.svg');
@@ -232,6 +234,8 @@
             box-shadow: none;
             width: var(--icon-size-md);
             height: var(--icon-size-md);
+            color: transparent;
+            font-size: 0;
         }
 
 
@@ -257,7 +261,8 @@
         .leaflet-control-zoom-out {
             border: none !important;
             background: transparent !important;
-            color: #fff !important;
+            color: transparent !important;
+            font-size: 0 !important;
             outline: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -274,9 +279,13 @@
             background-image: url('lib/leaflet/svg/minus-square-svgrepo-com.svg') !important;
         }
 
-        /* 去除按钮之间分割线 */
+        /* 去除按钮之间分割线并隐藏文字 */
         .leaflet-control-zoom a {
             border-bottom: none !important;
+            color: transparent !important;
+            font-size: 0 !important;
+            text-indent: -9999px !important;
+            overflow: hidden !important;
         }
     </style>
 </head>
