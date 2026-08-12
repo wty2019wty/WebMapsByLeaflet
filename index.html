@@ -13,10 +13,7 @@
         html, body { height: 100%; }
         #map { height: 100%; width: 100%; }
         .leaflet-grab { cursor: pointer; }
-        /* 左下角控件间距 */
-        .leaflet-bottom.leaflet-left .leaflet-control-zoom {
-            margin-bottom: 30px;
-        }
+
         /* 图源切换控件美化 */
         .leaflet-control-layers {
             border-radius: 8px;
@@ -36,7 +33,7 @@
         .top-bar {
             position: absolute;
             top: 12px;
-            right: 12px;
+            left: 12px;
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -50,17 +47,21 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.6);
             font-family: system-ui, sans-serif;
-            pointer-events: none;
+            pointer-events: auto;
         }
         .top-bar .logo {
             font-size: 18px;
             line-height: 1;
         }
-        .top-bar .layer-name {
-            font-size: 15px;
+        .top-bar .layer-select {
+            font-size: 14px;
             font-weight: 700;
             color: #111827;
-            white-space: nowrap;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            outline: none;
+            padding: 2px 4px;
         }
         .top-bar .crs-badge {
             font-size: 12px;
@@ -141,9 +142,12 @@
     </style>
 </head>
 <body>
-    <div class="top-bar">
+    <div class="top-bar" id="topBar">
         <span class="logo">🗺️</span>
-        <span class="layer-name" id="layerName">Web 地图查看器</span>
+        <select class="layer-select" id="layerSelect">
+            <option value="google">Google 卫星</option>
+            <option value="Arcgisonline">ArcGIS 卫星</option>
+        </select>
         <span class="crs-badge" id="crsName">WGS-84</span>
         <span class="sep"></span>
         <span class="coords" id="coords" title="点击复制坐标">纬度 --  经度 --</span>
@@ -225,21 +229,28 @@
             layers: [baseMaps['google']]
         });
 
-        // 缩放按钮放到左下角
+        // 添加比例尺（仅公制，左下角）
+        L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+
+        // 缩放按钮放到左下角（比例尺上方）
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-        // 添加图源切换控件（左上角）
-        L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
-
-        // 添加比例尺（仅公制，左下角缩放控件下方）
-        L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+        // 阻止顶部栏点击冒泡到地图
+        document.getElementById('topBar').addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+        document.getElementById('topBar').addEventListener('contextmenu', function (e) {
+            e.stopPropagation();
+        });
 
         // 实时显示鼠标经纬度（统一换算为 WGS-84）
         const coords = document.getElementById('coords');
         const pinBtn = document.getElementById('pinBtn');
+        const layerSelect = document.getElementById('layerSelect');
         let pinned = false;
         let pinnedW = null;
         let pinMarker = null;
+        let currentLayer = baseMaps['google'];
 
         map.on('mousemove', function (e) {
             if (pinned) return;
@@ -329,12 +340,23 @@
             }
         });
 
+        // 图层选择下拉框
+        layerSelect.addEventListener('change', function () {
+            const name = this.value;
+            if (baseMaps[name]) {
+                map.removeLayer(currentLayer);
+                currentLayer = baseMaps[name];
+                map.addLayer(currentLayer);
+            }
+        });
+
         // 切换底图时：保持中心点物理位置不变（换算坐标系），并更新徽标
         map.on('baselayerchange', function (e) {
             const layer = e.layer;
             const nextCRS = layer.options.crs || 'wgs84';
-            document.getElementById('layerName').textContent = e.name;
             document.getElementById('crsName').textContent = nextCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
+            layerSelect.value = e.name;
+            currentLayer = layer;
 
             if (nextCRS !== currentCRS) {
                 const c = map.getCenter();
