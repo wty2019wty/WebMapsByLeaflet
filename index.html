@@ -223,12 +223,13 @@
             coords.textContent = '纬度 --  经度 --';
         });
 
-        // 格式化坐标文本（WGS-84）
+        // 格式化坐标文本
         function formatCoords(lat, lng) {
             const latD = lat >= 0 ? 'N' : 'S';
             const lngD = lng >= 0 ? 'E' : 'W';
-            return '纬度 ' + Math.abs(lat).toFixed(5) + '° ' + latD +
-                '  经度 ' + Math.abs(lng).toFixed(5) + '° ' + lngD;
+            const crsLabel = currentCRS === 'gcj02' ? 'GCJ02' : 'WGS84';
+            return '【' + crsLabel + '】' + Math.abs(lat).toFixed(8) + '°' + latD +
+                '，' + Math.abs(lng).toFixed(8) + '°' + lngD;
         }
 
         // 固定坐标（显示 + 标记）
