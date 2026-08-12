@@ -181,6 +181,13 @@
         .top-bar .copy-btn.copied {
             box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6);
         }
+        /* 定位按钮定位中动画 */
+        .top-bar .copy-btn.locating img {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         /* Toast 弹窗 */
         .toast {
             position: fixed;
@@ -297,6 +304,7 @@
         <span class="sep"></span>
         <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
         <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
+        <button class="copy-btn" id="gpsBtn" title="定位到当前位置"><img src="lib/leaflet/svg/gps-svgrepo-com.svg" alt="gps" style="width: 100%; height: 100%;"></button>
         <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 100%; height: 100%;"></button>
         <button class="pin-btn" id="measureBtn" title="测量距离"><img src="lib/leaflet/svg/ruler-svgrepo-com.svg" alt="measure" style="width: 100%; height: 100%;"></button>
     </div>
@@ -398,6 +406,15 @@
             iconAnchor: [4, 29],
             popupAnchor: [0, -29],
             tooltipAnchor: [16, -26]
+        });
+
+        // 当前位置图标（地图点，尖端朝下为精确位置）
+        const locationIcon = L.icon({
+            iconUrl: 'lib/leaflet/svg/map-point-svgrepo-com.svg',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [1, -32],
+            tooltipAnchor: [16, -28]
         });
 
         // 添加比例尺（仅公制，左下角）
@@ -525,6 +542,42 @@
                 showToast('复制失败');
             }
         });
+
+        // 定位到当前位置
+        let locationMarker = null;
+        const gpsBtn = document.getElementById('gpsBtn');
+
+        function locate() {
+            // 安卓浏览器仅允许在 HTTPS 安全上下文下使用定位（localhost 除外）
+            if (!window.isSecureContext) {
+                showToast('定位失败：请在 HTTPS 安全连接下使用');
+                return;
+            }
+            if (!('geolocation' in navigator)) {
+                showToast('当前浏览器不支持定位');
+                return;
+            }
+            gpsBtn.classList.add('locating');
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                gpsBtn.classList.remove('locating');
+                // 浏览器返回 WGS-84，转换为当前底图坐标系以保持物理位置一致
+                const wgs = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                const target = currentCRS === 'gcj02' ? wgs84ToGcj02(wgs.lat, wgs.lng) : wgs;
+                if (locationMarker) map.removeLayer(locationMarker);
+                locationMarker = L.marker([target.lat, target.lng], { icon: locationIcon }).addTo(map);
+                map.setView([target.lat, target.lng], Math.max(map.getZoom(), 16));
+                showToast('定位成功');
+            }, function (err) {
+                gpsBtn.classList.remove('locating');
+                let msg = '定位失败';
+                if (err.code === err.PERMISSION_DENIED) msg = '定位失败：请允许浏览器位置权限';
+                else if (err.code === err.TIMEOUT) msg = '定位失败：定位超时';
+                else if (err.code === err.POSITION_UNAVAILABLE) msg = '定位失败：位置不可用';
+                showToast(msg);
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        }
+
+        gpsBtn.addEventListener('click', locate);
 
         // 测量工具
         let measureMode = false;
@@ -697,6 +750,13 @@
                     pinMarker.setLatLng([mt.lat, mt.lng]);
                     pinnedPoint = { lat: mt.lat, lng: mt.lng };
                     coords.textContent = formatCoords(mt.lat, mt.lng);
+                }
+                // 定位标记同步换算
+                if (locationMarker) {
+                    const lm = locationMarker.getLatLng();
+                    const lw = currentCRS === 'gcj02' ? gcj02ToWgs84(lm.lat, lm.lng) : { lat: lm.lat, lng: lm.lng };
+                    const lt = nextCRS === 'gcj02' ? wgs84ToGcj02(lw.lat, lw.lng) : lw;
+                    locationMarker.setLatLng([lt.lat, lt.lng]);
                 }
                 currentCRS = nextCRS;
             }
