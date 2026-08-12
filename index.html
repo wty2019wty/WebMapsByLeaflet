@@ -181,6 +181,11 @@
         .top-bar .bar-toggle {
             display: none;
         }
+        /* 包装层默认不参与布局（display: contents），保持桌面端原有横向排列不变 */
+        .top-bar .bar-body,
+        .top-bar .bar-inner {
+            display: contents;
+        }
         /* 定位按钮定位中动画 */
         .top-bar .copy-btn.locating img {
             animation: spin 1s linear infinite;
@@ -335,11 +340,31 @@
                 transform: none;
                 max-width: none;
                 width: calc(100% - 20px);
+                min-height: 48px;
                 border-radius: 16px;
                 flex-direction: column;
                 align-items: stretch;
                 gap: 6px;
                 padding: 8px 10px;
+                /* 收起/展开过渡：宽度按右缘锚定向左收缩，高度随内容由 grid 折叠实时跟随，各属性同步结束 */
+                transition:
+                    width var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
+                    padding var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
+                    border-radius var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
+                overflow: hidden;
+            }
+            .top-bar .bar-body {
+                display: grid;
+                grid-template-rows: 1fr;
+                min-height: 0;
+                transition: grid-template-rows var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .top-bar .bar-inner {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                min-height: 0;
+                overflow: hidden;
             }
             .top-bar .row {
                 width: 100%;
@@ -414,95 +439,74 @@
                 line-height: 40px;
             }
 
-            /* 移动端 top-bar 收起/展开按钮（layers 图标） */
-            /* 宽度与高度采用不同速率，展开/收起时形成沿对角线斜向的节奏 */
-            .top-bar {
-                transition:
-                    width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-                    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                overflow: hidden;
-            }
-            .top-bar .row {
-                /* 展开时内容延迟淡入，与宽高撑开节奏配合（收起时由 collapsing 覆盖为立即淡出） */
-                transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
-            }
+            /* 移动端 top-bar 收起/展开按钮（layers 图标）：
+               grid-template-rows 1fr→0fr 折叠内容高度（容器高度 auto 实时跟随，无跳变），
+               宽度右缘锚定向左收缩，最终停在右上角 48px 圆钮；展开为反向逆过程 */
             .top-bar .bar-toggle {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                width: 40px;
-                height: 40px;
-                flex: 0 0 40px;
+                width: 44px;
+                height: 44px;
                 padding: 0;
                 border-radius: 50%;
                 border: none;
                 background: #fff;
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
                 cursor: pointer;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.25s ease;
             }
             .top-bar .bar-toggle:active {
-                transform: scale(0.9);
+                transform: translate(-50%, -50%) scale(0.9);
             }
-
-            /* 收起：内容立即淡出后收缩为圆形按钮；展开：撑开过程中内容延迟淡入（逆过程） */
-            .top-bar.collapsing .row {
-                opacity: 0;
-                transform: scale(0.95);
-                transition: opacity 0.15s ease, transform 0.15s ease;
-            }
-            .top-bar.expanding .row {
-                opacity: 0;
-                transform: none;
+            .top-bar.collapsed .bar-body {
+                grid-template-rows: 0fr;
             }
             .top-bar.collapsed {
                 width: 48px;
-                height: 48px;
                 padding: 0;
                 border-radius: 50%;
                 gap: 0;
-                align-items: center;
-                justify-content: center;
             }
-            .top-bar.collapsed .row:not(.row-main) {
-                display: none;
-            }
-            .top-bar.collapsed .row-main {
-                width: 48px;
-                height: 48px;
-                gap: 0;
-                justify-content: center;
-                flex: 0 0 48px;
-            }
-            .top-bar.collapsed .row-main > *:not(.bar-toggle) {
-                display: none;
+            .top-bar.collapsed .bar-toggle {
+                opacity: 1;
+                pointer-events: auto;
             }
         }
     </style>
 </head>
 <body>
     <div class="top-bar" id="topBar">
-        <div class="row row-main">
-            <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 100%; height: 100%;"></span>
-            <select class="layer-select" id="layerSelect"></select>
-            <span class="crs-badge" id="crsName">GCJ-02</span>
-            <span class="sep"></span>
-            <button class="bar-toggle" id="barToggle" title="收起面板"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="收起/展开" style="width: 100%; height: 100%;"></button>
+        <div class="bar-body">
+            <div class="bar-inner">
+                <div class="row row-main">
+                    <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 100%; height: 100%;"></span>
+                    <select class="layer-select" id="layerSelect"></select>
+                    <span class="crs-badge" id="crsName">GCJ-02</span>
+                    <span class="sep"></span>
+                </div>
+                <div class="row row-coords">
+                    <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
+                    <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
+                </div>
+                <div class="row row-loc">
+                    <span class="loc-coords" id="locCoords" title="定位坐标">定位 --  --</span>
+                    <button class="copy-btn" id="locCopyBtn" title="复制定位坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
+                </div>
+                <div class="row row-actions">
+                    <button class="copy-btn" id="gpsBtn" title="定位到当前位置"><img src="lib/leaflet/svg/gps-svgrepo-com.svg" alt="gps" style="width: 100%; height: 100%;"></button>
+                    <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 100%; height: 100%;"></button>
+                    <button class="pin-btn" id="measureBtn" title="测量距离"><img src="lib/leaflet/svg/ruler-svgrepo-com.svg" alt="measure" style="width: 100%; height: 100%;"></button>
+                </div>
+            </div>
         </div>
-        <div class="row row-coords">
-            <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
-            <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
-        </div>
-        <div class="row row-loc">
-            <span class="loc-coords" id="locCoords" title="定位坐标">定位 --  --</span>
-            <button class="copy-btn" id="locCopyBtn" title="复制定位坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
-        </div>
-        <div class="row row-actions">
-            <button class="copy-btn" id="gpsBtn" title="定位到当前位置"><img src="lib/leaflet/svg/gps-svgrepo-com.svg" alt="gps" style="width: 100%; height: 100%;"></button>
-            <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 100%; height: 100%;"></button>
-            <button class="pin-btn" id="measureBtn" title="测量距离"><img src="lib/leaflet/svg/ruler-svgrepo-com.svg" alt="measure" style="width: 100%; height: 100%;"></button>
-        </div>
+        <button class="bar-toggle" id="barToggle" title="收起面板"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="收起/展开" style="width: 100%; height: 100%;"></button>
     </div>
     <div id="map"></div>
     <div class="toast" id="toast"></div>
@@ -662,64 +666,53 @@
         });
 
         // ---------- 移动端 top-bar 收起/展开（layers 图标按钮） ----------
-        // 收起：内容行淡出，top-bar 向按钮所在的右上角收缩为圆形按钮
-        // 展开：先固定宽高，内容淡入的同时平滑撑开
+        // 动画全部由 CSS 完成（grid 高度折叠 + 宽度收缩 + 按钮淡入），JS 仅切换状态；
+        // 宽度时长按屏幕宽度以恒定线速度动态计算，屏幕越大动画越长、速度感知一致
         const topBarEl = document.getElementById('topBar');
         const barToggle = document.getElementById('barToggle');
         let barCollapsed = false;
 
+        const BAR_PX_MS = 0.6;   // 每像素耗时（ms），可调
+        const BAR_MAX_MS = 900;  // 最大时长，避免超大屏动画过慢
+
+        function setBarDuration() {
+            const t = Math.min(Math.round((topBarEl.offsetWidth - 48) * BAR_PX_MS), BAR_MAX_MS);
+            topBarEl.style.setProperty('--bar-dur-w', t + 'ms');
+        }
+
+        // 收起面板（带 CSS 动画）
+        function collapseBar() {
+            setBarDuration();
+            topBarEl.classList.add('collapsed');
+            barToggle.title = '展开面板';
+            barCollapsed = true;
+        }
+
+        // 展开面板（带 CSS 动画）
+        function expandBar() {
+            topBarEl.classList.remove('collapsed');
+            barToggle.title = '收起面板';
+            barCollapsed = false;
+        }
+
         barToggle.addEventListener('click', function () {
             if (barCollapsed) {
-                // 展开（收起的逆过程）：从 48px 圆钮向左下撑开，内容在撑开过程中延迟淡入
-                topBarEl.classList.add('expanding');
-                topBarEl.classList.remove('collapsed');
-                topBarEl.style.width = '';
-                topBarEl.style.height = '';
-                void topBarEl.offsetHeight;
-                const fullW = topBarEl.offsetWidth;
-                const fullH = topBarEl.offsetHeight;
-                topBarEl.style.width = '48px';
-                topBarEl.style.height = '48px';
-                void topBarEl.offsetHeight;
-                topBarEl.style.width = fullW + 'px';
-                topBarEl.style.height = fullH + 'px';
-                // 下一帧移除 expanding：内容在撑开过程中延迟淡入（CSS 过渡 delay 控制时机）
-                requestAnimationFrame(function () {
-                    topBarEl.classList.remove('expanding');
-                });
-                topBarEl.addEventListener('transitionend', function onEnd(e) {
-                    // 宽度比高度慢，等最慢的宽度过渡结束后再清理内联样式，避免中断
-                    if (e.target === topBarEl && e.propertyName === 'width') {
-                        topBarEl.style.width = '';
-                        topBarEl.style.height = '';
-                        topBarEl.removeEventListener('transitionend', onEnd);
-                    }
-                });
-                barToggle.title = '收起面板';
-                barCollapsed = false;
+                expandBar();
             } else {
-                // 收起：固定当前尺寸，内容淡出后向右上角收缩为圆形按钮
-                topBarEl.style.width = topBarEl.offsetWidth + 'px';
-                topBarEl.style.height = topBarEl.offsetHeight + 'px';
-                topBarEl.classList.add('collapsing');
-                setTimeout(function () {
-                    topBarEl.classList.remove('collapsing');
-                    topBarEl.classList.add('collapsed');
-                    topBarEl.style.width = '48px';
-                    topBarEl.style.height = '48px';
-                }, 150);
-                barToggle.title = '展开面板';
-                barCollapsed = true;
+                collapseBar();
             }
         });
+
+        // 移动端首次加载：等待页面渲染稳定后自动收起，让出地图视野（动画与点击收起一致）
+        if (window.innerWidth <= 1080) {
+            setTimeout(collapseBar, 600);
+        }
 
         // 切回桌面宽度时撤销收起状态，避免影响桌面布局
         window.addEventListener('resize', function () {
             if (window.innerWidth > 1080 && barCollapsed) {
                 barCollapsed = false;
-                topBarEl.classList.remove('collapsed', 'collapsing', 'expanding');
-                topBarEl.style.width = '';
-                topBarEl.style.height = '';
+                topBarEl.classList.remove('collapsed');
             }
         });
 
