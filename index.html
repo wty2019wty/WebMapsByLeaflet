@@ -520,6 +520,7 @@
             if (pinMarker) map.removeLayer(pinMarker);
             pinMarker = L.marker([p.lat, p.lng], {icon: pinIcon}).addTo(map);
             pinBtn.title = '取消固定';
+            bindMeasureMarkers();
         }
 
         // 取消固定
@@ -626,6 +627,7 @@
                     '当前位置<br>' + formatCoords(target.lat, target.lng),
                     { className: 'location-popup' }
                 );
+                bindMeasureMarkers();
                 map.setView([target.lat, target.lng], Math.max(map.getZoom(), 16));
                 showToast('定位成功');
             }, function (err) {
@@ -660,7 +662,7 @@
             measureMode = true;
             measureBtn.classList.add('pinned');
             measureBtn.title = '退出测量';
-            showToast('已进入测量模式，单击添加测量点，双击结束');
+            showToast('已进入测量模式，单击添加测量点，可点击定位/固定标点选取，双击结束');
             map.getContainer().style.cursor = 'crosshair';
             layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
             map.doubleClickZoom.disable();
@@ -670,6 +672,8 @@
             map.on('mousedown', onRightMouseDown);
             map.on('mousemove', onRightMouseMove);
             map.on('mouseup', onRightMouseUp);
+            // 联动：测量模式下可直接点击定位/固定标点选取其位置
+            bindMeasureMarkers();
         }
 
         function exitMeasureMode() {
@@ -686,8 +690,23 @@
             map.off('mousedown', onRightMouseDown);
             map.off('mousemove', onRightMouseMove);
             map.off('mouseup', onRightMouseUp);
+            if (pinMarker) pinMarker.off('click', onMarkerClick);
+            if (locationMarker) locationMarker.off('click', onMarkerClick);
             rightDrag = null;
             clearMeasure();
+        }
+
+        // 测量模式下为定位/固定标点绑定选取监听（避免重复绑定）
+        function bindMeasureMarkers() {
+            if (!measureMode) return;
+            if (pinMarker) {
+                pinMarker.off('click', onMarkerClick);
+                pinMarker.on('click', onMarkerClick);
+            }
+            if (locationMarker) {
+                locationMarker.off('click', onMarkerClick);
+                locationMarker.on('click', onMarkerClick);
+            }
         }
 
         function preventContextMenu(e) {
@@ -721,7 +740,27 @@
         function onMeasureClick(e) {
             // 双击会先触发两次 click，忽略第二次（detail>=2），避免末端误加重复点
             if (e.originalEvent && e.originalEvent.detail >= 2) return;
-            measurePoints.push(e.latlng);
+            addMeasurePoint(e.latlng);
+        }
+
+        // 测量模式下点击定位/固定标点：直接选取该标点坐标作为测量点
+        function onMarkerClick(e) {
+            if (e.originalEvent && e.originalEvent.detail >= 2) {
+                // 双击标点结束测量
+                L.DomEvent.stopPropagation(e.originalEvent);
+                exitMeasureMode();
+                return;
+            }
+            // 关闭标点可能弹出的 popup
+            e.target.closePopup();
+            // 用标点精确坐标加点，并阻止冒泡到地图，避免重复加点
+            addMeasurePoint(e.latlng);
+            L.DomEvent.stopPropagation(e.originalEvent);
+        }
+
+        // 统一添加测量点
+        function addMeasurePoint(latlng) {
+            measurePoints.push(latlng);
             if (measurePoints.length === 1) {
                 // 第一个点，创建线
                 measureLine = L.polyline(measurePoints, { color: '#ef4444', weight: 2, dashArray: '5,5' }).addTo(map);
