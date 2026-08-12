@@ -329,11 +329,12 @@
 
             /* 顶部信息栏：垂直堆叠为独立功能行，适配小屏与刘海屏安全区 */
             .top-bar {
-                left: 10px;
+                left: auto;
                 right: 10px;
                 top: calc(10px + env(safe-area-inset-top));
                 transform: none;
                 max-width: none;
+                width: calc(100% - 20px);
                 border-radius: 16px;
                 flex-direction: column;
                 align-items: stretch;
@@ -416,7 +417,6 @@
             /* 移动端 top-bar 收起/展开按钮（layers 图标） */
             .top-bar {
                 transition:
-                    left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -444,15 +444,13 @@
                 transform: scale(0.9);
             }
 
-            /* 收起过程：内容行淡出，top-bar 向按钮所在的右上角收缩为圆形按钮 */
+            /* 收起过程：内容行淡出，top-bar 以右缘为轴（right 固定）收缩为右上角圆形按钮 */
             .top-bar.collapsing .row,
             .top-bar.expanding .row {
                 opacity: 0;
                 transform: scale(0.95);
             }
             .top-bar.collapsed {
-                left: calc(100% - 58px);
-                right: 10px;
                 width: 48px;
                 height: 48px;
                 padding: 0;
@@ -669,8 +667,11 @@
                 // 展开：先隐藏内容（淡入），宽高从 48px 平滑过渡到内容实际尺寸
                 topBarEl.classList.add('expanding');
                 topBarEl.classList.remove('collapsed');
-                const fullW = topBarEl.parentElement.clientWidth - 20;
-                const fullH = topBarEl.scrollHeight;
+                topBarEl.style.width = '';
+                topBarEl.style.height = '';
+                void topBarEl.offsetHeight;
+                const fullW = topBarEl.offsetWidth;
+                const fullH = topBarEl.offsetHeight;
                 topBarEl.style.width = '48px';
                 topBarEl.style.height = '48px';
                 void topBarEl.offsetHeight;
