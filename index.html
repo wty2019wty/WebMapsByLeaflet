@@ -416,6 +416,7 @@
             /* 移动端 top-bar 收起/展开按钮（layers 图标） */
             .top-bar {
                 transition:
+                    left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -443,14 +444,15 @@
                 transform: scale(0.9);
             }
 
-            /* 收起过程：内容行淡出，top-bar 收缩为圆形按钮 */
-            .top-bar.collapsing .row {
+            /* 收起过程：内容行淡出，top-bar 向按钮所在的右上角收缩为圆形按钮 */
+            .top-bar.collapsing .row,
+            .top-bar.expanding .row {
                 opacity: 0;
                 transform: scale(0.95);
             }
             .top-bar.collapsed {
-                left: 10px;
-                right: auto;
+                left: calc(100% - 58px);
+                right: 10px;
                 width: 48px;
                 height: 48px;
                 padding: 0;
@@ -656,33 +658,49 @@
         });
 
         // ---------- 移动端 top-bar 收起/展开（layers 图标按钮） ----------
-        // 收起：先固定当前高度，内容行淡出后收缩为圆形按钮；展开：反向平滑展开到内容高度
+        // 收起：内容行淡出，top-bar 向按钮所在的右上角收缩为圆形按钮
+        // 展开：先固定宽高，内容淡入的同时平滑撑开
         const topBarEl = document.getElementById('topBar');
         const barToggle = document.getElementById('barToggle');
         let barCollapsed = false;
 
         barToggle.addEventListener('click', function () {
             if (barCollapsed) {
-                // 展开
-                topBarEl.style.height = topBarEl.offsetHeight + 'px';
+                // 展开：先隐藏内容（淡入），宽高从 48px 平滑过渡到内容实际尺寸
+                topBarEl.classList.add('expanding');
                 topBarEl.classList.remove('collapsed');
+                const fullW = topBarEl.parentElement.clientWidth - 20;
+                const fullH = topBarEl.scrollHeight;
+                topBarEl.style.width = '48px';
+                topBarEl.style.height = '48px';
                 void topBarEl.offsetHeight;
-                topBarEl.style.height = topBarEl.scrollHeight + 'px';
+                topBarEl.style.width = fullW + 'px';
+                topBarEl.style.height = fullH + 'px';
+                // 下一帧移除 expanding，内容随宽高过渡同步淡入
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        topBarEl.classList.remove('expanding');
+                    });
+                });
                 topBarEl.addEventListener('transitionend', function onEnd(e) {
                     if (e.target === topBarEl && e.propertyName === 'height') {
+                        topBarEl.style.width = '';
                         topBarEl.style.height = '';
+                        topBarEl.classList.remove('expanding');
                         topBarEl.removeEventListener('transitionend', onEnd);
                     }
                 });
                 barToggle.title = '收起面板';
                 barCollapsed = false;
             } else {
-                // 收起
+                // 收起：固定当前尺寸，内容淡出后向右上角收缩为圆形按钮
+                topBarEl.style.width = topBarEl.offsetWidth + 'px';
                 topBarEl.style.height = topBarEl.offsetHeight + 'px';
                 topBarEl.classList.add('collapsing');
                 setTimeout(function () {
                     topBarEl.classList.remove('collapsing');
                     topBarEl.classList.add('collapsed');
+                    topBarEl.style.width = '48px';
                     topBarEl.style.height = '48px';
                 }, 150);
                 barToggle.title = '展开面板';
@@ -694,7 +712,8 @@
         window.addEventListener('resize', function () {
             if (window.innerWidth > 1080 && barCollapsed) {
                 barCollapsed = false;
-                topBarEl.classList.remove('collapsed', 'collapsing');
+                topBarEl.classList.remove('collapsed', 'collapsing', 'expanding');
+                topBarEl.style.width = '';
                 topBarEl.style.height = '';
             }
         });
