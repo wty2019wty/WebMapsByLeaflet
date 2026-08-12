@@ -84,6 +84,11 @@
             font-family: system-ui, sans-serif;
             pointer-events: auto;
         }
+        .top-bar .row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
         .top-bar .logo {
             display: flex;
             align-items: center;
@@ -343,7 +348,7 @@
                 -webkit-touch-callout: none;
             }
 
-            /* 顶部信息栏：多行卡片布局，适配小屏与刘海屏安全区 */
+            /* 顶部信息栏：垂直堆叠为独立功能行，适配小屏与刘海屏安全区 */
             .top-bar {
                 left: 10px;
                 right: 10px;
@@ -351,22 +356,27 @@
                 transform: none;
                 max-width: none;
                 border-radius: 16px;
-                flex-wrap: wrap;
-                gap: 8px 10px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
                 padding: 10px 12px;
-                justify-content: flex-start;
             }
-            .top-bar .logo { order: 1; }
-            .top-bar .layer-select { order: 2; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-            .top-bar .crs-badge { order: 3; font-size: 11px; padding: 2px 8px; letter-spacing: 0.3px; }
-            .top-bar #gpsBtn { order: 4; margin-left: auto; }
-            .top-bar .coords { order: 5; }
-            .top-bar #copyBtn { order: 6; }
-            .top-bar .pin-btn { order: 7; }
-            .top-bar #measureBtn { order: 8; }
-            .top-bar .loc-coords { order: 9; }
-            .top-bar #locCopyBtn { order: 10; }
+            .top-bar .row {
+                width: 100%;
+                min-width: 0;
+                gap: 10px;
+            }
             .top-bar .sep { display: none; }
+            .top-bar .layer-select {
+                flex: 1 1 auto;
+                min-width: 0;
+                font-size: 13px;
+            }
+            .top-bar .crs-badge {
+                font-size: 11px;
+                padding: 2px 8px;
+                letter-spacing: 0.3px;
+            }
 
             /* 触控按钮：扩大点击区域至 40px */
             .top-bar button,
@@ -428,17 +438,25 @@
 </head>
 <body>
     <div class="top-bar" id="topBar">
-        <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 100%; height: 100%;"></span>
-        <select class="layer-select" id="layerSelect"></select>
-        <span class="crs-badge" id="crsName">GCJ-02</span>
-        <span class="sep"></span>
-        <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
-        <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
-        <span class="loc-coords" id="locCoords" title="定位坐标">定位 --  --</span>
-        <button class="copy-btn" id="locCopyBtn" title="复制定位坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
-        <button class="copy-btn" id="gpsBtn" title="定位到当前位置"><img src="lib/leaflet/svg/gps-svgrepo-com.svg" alt="gps" style="width: 100%; height: 100%;"></button>
-        <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 100%; height: 100%;"></button>
-        <button class="pin-btn" id="measureBtn" title="测量距离"><img src="lib/leaflet/svg/ruler-svgrepo-com.svg" alt="measure" style="width: 100%; height: 100%;"></button>
+        <div class="row row-main">
+            <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 100%; height: 100%;"></span>
+            <select class="layer-select" id="layerSelect"></select>
+            <span class="crs-badge" id="crsName">GCJ-02</span>
+            <span class="sep"></span>
+        </div>
+        <div class="row row-coords">
+            <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
+            <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
+        </div>
+        <div class="row row-loc">
+            <span class="loc-coords" id="locCoords" title="定位坐标">定位 --  --</span>
+            <button class="copy-btn" id="locCopyBtn" title="复制定位坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 100%; height: 100%;"></button>
+        </div>
+        <div class="row row-actions">
+            <button class="copy-btn" id="gpsBtn" title="定位到当前位置"><img src="lib/leaflet/svg/gps-svgrepo-com.svg" alt="gps" style="width: 100%; height: 100%;"></button>
+            <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 100%; height: 100%;"></button>
+            <button class="pin-btn" id="measureBtn" title="测量距离"><img src="lib/leaflet/svg/ruler-svgrepo-com.svg" alt="measure" style="width: 100%; height: 100%;"></button>
+        </div>
     </div>
     <div id="map"></div>
     <div class="toast" id="toast"></div>
