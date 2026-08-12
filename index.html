@@ -529,6 +529,143 @@
                 padding: 10px 18px;
             }
         }
+
+        /* ========== 小高度屏幕优化 (高度≤600px) ========== */
+        @media (max-height: 600px) {
+            .top-bar {
+                padding: 6px 12px;
+                gap: 8px;
+            }
+            .top-bar .row {
+                gap: 8px;
+            }
+            .top-bar .coords,
+            .top-bar .loc-coords {
+                font-size: 12px;
+                padding: 4px 6px;
+            }
+            .top-bar button,
+            .top-bar .pin-btn,
+            .top-bar .copy-btn {
+                width: 36px;
+                height: 36px;
+                flex: 0 0 36px;
+            }
+            .top-bar .crs-badge {
+                font-size: 11px;
+                padding: 2px 6px;
+            }
+            .top-bar .layer-select {
+                font-size: 13px;
+            }
+            /* 缩放控件缩小 */
+            .leaflet-control-zoom-in,
+            .leaflet-control-zoom-out {
+                width: 32px !important;
+                height: 32px !important;
+            }
+            .leaflet-touch .leaflet-bar a {
+                width: 32px;
+                height: 32px;
+                line-height: 32px;
+            }
+            /* 比例尺缩小 */
+            .leaflet-control-scale-line {
+                font-size: 10px;
+                padding: 2px 4px;
+            }
+        }
+
+        /* ========== 1024x600 专用优化 ========== */
+        @media (width: 1024px) and (height: 600px),
+               (width: 1024px) and (max-height: 600px),
+               (max-width: 1024px) and (height: 600px) {
+            .top-bar {
+                position: absolute;
+                top: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 6px 16px;
+                gap: 10px;
+                border-radius: 12px;
+            }
+            .top-bar .row {
+                gap: 8px;
+            }
+            .top-bar .coords,
+            .top-bar .loc-coords {
+                width: 200px;
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+            .top-bar button,
+            .top-bar .pin-btn,
+            .top-bar .copy-btn {
+                width: 32px;
+                height: 32px;
+                flex: 0 0 32px;
+            }
+            .top-bar .crs-badge {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+            .top-bar .layer-select {
+                font-size: 12px;
+                max-width: 120px;
+            }
+            /* 缩放控件调整到右下角，避免与顶部栏冲突 */
+            .leaflet-control-zoom {
+                position: absolute !important;
+                bottom: 30px !important;
+                right: 10px !important;
+                top: auto !important;
+                left: auto !important;
+            }
+            /* 比例尺调整到左下角 */
+            .leaflet-control-scale {
+                position: absolute !important;
+                bottom: 8px !important;
+                left: 8px !important;
+            }
+        }
+
+        /* ========== 横屏小高度设备优化 ========== */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .top-bar {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+            }
+            .top-bar .row {
+                width: auto;
+                flex: 0 0 auto;
+                gap: 6px;
+            }
+            .top-bar .coords,
+            .top-bar .loc-coords {
+                width: 160px;
+                font-size: 11px;
+                padding: 3px 5px;
+            }
+            .top-bar button,
+            .top-bar .pin-btn,
+            .top-bar .copy-btn {
+                width: 28px;
+                height: 28px;
+                flex: 0 0 28px;
+            }
+            .top-bar .crs-badge {
+                font-size: 9px;
+                padding: 1px 4px;
+            }
+            .top-bar .layer-select {
+                font-size: 11px;
+                max-width: 100px;
+            }
+        }
     </style>
 </head>
 <body>
