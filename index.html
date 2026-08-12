@@ -664,12 +664,10 @@
             measureMode = true;
             measureBtn.classList.add('pinned');
             measureBtn.title = '退出测量';
-            showToast('已进入测量模式，单击添加测量点，可点击定位/固定标点选取，双击结束');
+            showToast('已进入测量模式，单击添加测量点，可点击定位/固定标点选取，再次点击尺子退出');
             map.getContainer().style.cursor = 'crosshair';
             layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
-            map.doubleClickZoom.disable();
             map.on('click', onMeasureClick);
-            map.on('dblclick', onMeasureDoubleClick);
             map.getContainer().addEventListener('contextmenu', preventContextMenu);
             map.on('mousedown', onRightMouseDown);
             map.on('mousemove', onRightMouseMove);
@@ -686,8 +684,6 @@
             map.getContainer().style.cursor = '';
             layerSelect.disabled = false;
             map.off('click', onMeasureClick);
-            map.off('dblclick', onMeasureDoubleClick);
-            map.doubleClickZoom.enable();
             map.getContainer().removeEventListener('contextmenu', preventContextMenu);
             map.off('mousedown', onRightMouseDown);
             map.off('mousemove', onRightMouseMove);
@@ -753,12 +749,6 @@
 
         // 测量模式下点击定位/固定标点：直接选取该标点坐标作为测量点
         function onMarkerClick(e) {
-            if (e.originalEvent && e.originalEvent.detail >= 2) {
-                // 双击标点结束测量
-                L.DomEvent.stopPropagation(e.originalEvent);
-                exitMeasureMode();
-                return;
-            }
             // 关闭标点可能弹出的 popup
             e.target.closePopup();
             // 用标点精确坐标加点，并阻止冒泡到地图，避免重复加点
@@ -806,12 +796,6 @@
                 map.removeLayer(measurePreviewLine);
                 measurePreviewLine = null;
             }
-        }
-
-        function onMeasureDoubleClick(e) {
-            // 双击结束测量
-            L.DomEvent.stopPropagation(e);
-            exitMeasureMode();
         }
 
         function updateMeasureTooltip() {
