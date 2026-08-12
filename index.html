@@ -354,17 +354,16 @@
                 overflow: hidden;
             }
             .top-bar .bar-body {
-                display: grid;
-                grid-template-rows: 1fr;
-                min-height: 0;
-                transition: grid-template-rows var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
+                /* 覆盖桌面端的 display: contents，恢复块级盒子以支持 max-height 折叠 */
+                display: block;
+                /* 高度折叠用 max-height 数值过渡（JS 测量内容高度），全浏览器可靠流畅 */
+                overflow: hidden;
+                transition: max-height var(--bar-dur-w, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
             }
             .top-bar .bar-inner {
                 display: flex;
                 flex-direction: column;
                 gap: 6px;
-                min-height: 0;
-                overflow: hidden;
                 /* 右侧为常驻收起按钮留白，避免遮挡内容 */
                 padding-right: 50px;
             }
@@ -442,7 +441,7 @@
             }
 
             /* 移动端 top-bar 收起/展开按钮（layers 图标）：
-               grid-template-rows 1fr→0fr 折叠内容高度，宽度右缘锚定向左收缩；
+               高度由 bar-body 的 max-height 折叠（JS 测量内容高度），宽度右缘锚定向左收缩；
                按钮固定右上角（top 4px 对齐、right 2px），收起时 top-bar 收缩到刚好包裹按钮 */
             .top-bar .bar-toggle {
                 position: absolute;
@@ -469,9 +468,6 @@
                 padding: 0;
                 border-radius: 26px;
                 gap: 0;
-            }
-            .top-bar.collapsed .bar-body {
-                grid-template-rows: 0fr;
             }
         }
     </style>
@@ -661,10 +657,12 @@
         });
 
         // ---------- 移动端 top-bar 收起/展开（layers 图标按钮） ----------
-        // 动画全部由 CSS 完成（grid 高度折叠 + 宽度收缩 + 按钮淡入），JS 仅切换状态；
-        // 宽度时长按屏幕宽度以恒定线速度动态计算，屏幕越大动画越长、速度感知一致
+        // 宽度动画由 CSS 完成（width 过渡 + 右缘锚定）；高度动画用 max-height 数值过渡，
+        // JS 精确测量内容高度，全浏览器可靠；收起/展开互为逆过程
         const topBarEl = document.getElementById('topBar');
         const barToggle = document.getElementById('barToggle');
+        const barBody = topBarEl.querySelector('.bar-body');
+        const barInner = topBarEl.querySelector('.bar-inner');
         let barCollapsed = false;
 
         const BAR_PX_MS = 0.6;   // 每像素耗时（ms），可调
@@ -675,9 +673,21 @@
             topBarEl.style.setProperty('--bar-dur-w', t + 'ms');
         }
 
+        let barEndHandler = null;
+        function clearBarEnd() {
+            if (barEndHandler) {
+                barBody.removeEventListener('transitionend', barEndHandler);
+                barEndHandler = null;
+            }
+        }
+
         // 收起面板（带 CSS 动画）
         function collapseBar() {
             setBarDuration();
+            clearBarEnd();
+            barBody.style.maxHeight = barInner.offsetHeight + 'px';
+            void barBody.offsetHeight;
+            barBody.style.maxHeight = '0px';
             topBarEl.classList.add('collapsed');
             barToggle.title = '展开面板';
             barCollapsed = true;
@@ -685,7 +695,19 @@
 
         // 展开面板（带 CSS 动画）
         function expandBar() {
+            setBarDuration();
+            clearBarEnd();
+            barBody.style.maxHeight = '0px';
             topBarEl.classList.remove('collapsed');
+            void barBody.offsetHeight;
+            barBody.style.maxHeight = barInner.offsetHeight + 'px';
+            barEndHandler = function (e) {
+                if (e.target === barBody && e.propertyName === 'max-height') {
+                    barBody.style.maxHeight = 'none';
+                    clearBarEnd();
+                }
+            };
+            barBody.addEventListener('transitionend', barEndHandler);
             barToggle.title = '收起面板';
             barCollapsed = false;
         }
@@ -707,7 +729,9 @@
         window.addEventListener('resize', function () {
             if (window.innerWidth > 1080 && barCollapsed) {
                 barCollapsed = false;
+                clearBarEnd();
                 topBarEl.classList.remove('collapsed');
+                barBody.style.maxHeight = 'none';
             }
         });
 
