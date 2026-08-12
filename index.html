@@ -408,6 +408,66 @@
                 height: 40px;
                 line-height: 40px;
             }
+
+            /* 移动端 top-bar 收起/展开按钮（layers 图标） */
+            .top-bar {
+                transition:
+                    height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                overflow: hidden;
+            }
+            .top-bar .row {
+                transition: opacity 0.15s ease, transform 0.15s ease;
+            }
+            .top-bar .bar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                flex: 0 0 40px;
+                padding: 0;
+                border-radius: 50%;
+                border: none;
+                background: #fff;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+                cursor: pointer;
+            }
+            .top-bar .bar-toggle:active {
+                transform: scale(0.9);
+            }
+
+            /* 收起过程：内容行淡出，top-bar 收缩为圆形按钮 */
+            .top-bar.collapsing .row {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            .top-bar.collapsed {
+                left: 10px;
+                right: auto;
+                width: 48px;
+                height: 48px;
+                padding: 0;
+                border-radius: 50%;
+                gap: 0;
+                align-items: center;
+                justify-content: center;
+            }
+            .top-bar.collapsed .row:not(.row-main) {
+                display: none;
+            }
+            .top-bar.collapsed .row-main {
+                width: 48px;
+                height: 48px;
+                gap: 0;
+                justify-content: center;
+                flex: 0 0 48px;
+            }
+            .top-bar.collapsed .row-main > *:not(.bar-toggle) {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -418,6 +478,7 @@
             <select class="layer-select" id="layerSelect"></select>
             <span class="crs-badge" id="crsName">GCJ-02</span>
             <span class="sep"></span>
+            <button class="bar-toggle" id="barToggle" title="收起面板"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="收起/展开" style="width: 100%; height: 100%;"></button>
         </div>
         <div class="row row-coords">
             <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
@@ -588,6 +649,50 @@
         });
         document.getElementById('topBar').addEventListener('contextmenu', function (e) {
             e.stopPropagation();
+        });
+
+        // ---------- 移动端 top-bar 收起/展开（layers 图标按钮） ----------
+        // 收起：先固定当前高度，内容行淡出后收缩为圆形按钮；展开：反向平滑展开到内容高度
+        const topBarEl = document.getElementById('topBar');
+        const barToggle = document.getElementById('barToggle');
+        let barCollapsed = false;
+
+        barToggle.addEventListener('click', function () {
+            if (barCollapsed) {
+                // 展开
+                topBarEl.style.height = topBarEl.offsetHeight + 'px';
+                topBarEl.classList.remove('collapsed');
+                void topBarEl.offsetHeight;
+                topBarEl.style.height = topBarEl.scrollHeight + 'px';
+                topBarEl.addEventListener('transitionend', function onEnd(e) {
+                    if (e.target === topBarEl && e.propertyName === 'height') {
+                        topBarEl.style.height = '';
+                        topBarEl.removeEventListener('transitionend', onEnd);
+                    }
+                });
+                barToggle.title = '收起面板';
+                barCollapsed = false;
+            } else {
+                // 收起
+                topBarEl.style.height = topBarEl.offsetHeight + 'px';
+                topBarEl.classList.add('collapsing');
+                setTimeout(function () {
+                    topBarEl.classList.remove('collapsing');
+                    topBarEl.classList.add('collapsed');
+                    topBarEl.style.height = '48px';
+                }, 150);
+                barToggle.title = '展开面板';
+                barCollapsed = true;
+            }
+        });
+
+        // 切回桌面宽度时撤销收起状态，避免影响桌面布局
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 1080 && barCollapsed) {
+                barCollapsed = false;
+                topBarEl.classList.remove('collapsed', 'collapsing');
+                topBarEl.style.height = '';
+            }
         });
 
         // 实时显示当前底图坐标系下的鼠标经纬度
