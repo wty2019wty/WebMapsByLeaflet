@@ -151,15 +151,17 @@
             transition: all 0.2s;
         }
         .top-bar .pin-btn:hover {
-            transform: scale(1.15);
+            transform: scale(1.1);
+            background: rgba(99, 102, 241, 0.12);
         }
         .top-bar .pin-btn.pinned {
             filter: none;
-            background: rgba(239, 68, 68, 0.15);
+            background: rgba(99, 102, 241, 0.16);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
         }
         .top-bar .coords.pinned {
-            color: #dc2626;
-            background: rgba(239, 68, 68, 0.12);
+            color: #4f46e5;
+            background: rgba(99, 102, 241, 0.12);
         }
         .top-bar .copy-btn {
             pointer-events: auto;
@@ -177,7 +179,13 @@
             transition: all 0.2s;
         }
         .top-bar .copy-btn:hover {
-            transform: scale(1.15);
+            transform: scale(1.1);
+            background: rgba(99, 102, 241, 0.12);
+        }
+        .top-bar .copy-btn.copied {
+            filter: none;
+            background: rgba(99, 102, 241, 0.16);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
         }
         /* Toast 弹窗 */
         .toast {
@@ -502,6 +510,8 @@
             try {
                 await navigator.clipboard.writeText(text);
                 showToast('已复制坐标');
+                copyBtn.classList.add('copied');
+                setTimeout(function () { copyBtn.classList.remove('copied'); }, 400);
             } catch (e) {
                 showToast('复制失败');
             }
