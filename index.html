@@ -466,8 +466,42 @@
         // 默认底图（地图初始化与下拉框默认选中统一引用此配置）
         const defaultLayerKey = 'google镜像';
 
-        // 当前底图的坐标系（由默认底图推导）
-        let currentCRS = baseMaps[defaultLayerKey].options.crs || 'wgs84';
+        // ---------- URL 状态解析（仿 Google Maps @lat,lng,zoomz 格式） ----------
+        // 支持 ?m=@21.566304,111.8249991,16z&layer=xxx&pin=lat,lng
+        function parseURLState() {
+            const params = new URLSearchParams(location.search);
+            const state = { layer: null, pin: null, center: null };
+            const m = params.get('m');
+            if (m) {
+                const mm = /^@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+)z?$/.exec(m.trim());
+                if (mm) {
+                    const lat = parseFloat(mm[1]);
+                    const lng = parseFloat(mm[2]);
+                    const zoom = parseInt(mm[3], 10);
+                    if (isFinite(lat) && isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                        state.center = { lat: lat, lng: lng, zoom: zoom };
+                    }
+                }
+            }
+            const layer = params.get('layer');
+            if (layer && baseMaps[layer]) state.layer = layer;
+            const pin = params.get('pin');
+            if (pin) {
+                const pp = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(pin.trim());
+                if (pp) {
+                    const lat = parseFloat(pp[1]);
+                    const lng = parseFloat(pp[2]);
+                    if (isFinite(lat) && isFinite(lng)) state.pin = { lat: lat, lng: lng };
+                }
+            }
+            return state;
+        }
+
+        const urlState = parseURLState();
+
+        // 当前底图的坐标系（优先使用 URL 指定的底图，否则使用默认底图）
+        const initialLayerKey = (urlState.layer && baseMaps[urlState.layer]) ? urlState.layer : defaultLayerKey;
+        let currentCRS = baseMaps[initialLayerKey].options.crs || 'wgs84';
 
         // ---------- WGS-84 与 GCJ-02 互转（标准算法） ----------
         function outOfChina(lat, lng) {
@@ -516,12 +550,12 @@
             return currentCRS === 'gcj02' ? gcj02ToWgs84(lat, lng) : { lat: lat, lng: lng };
         }
 
-        // 初始化地图，默认使用 defaultLayerKey 指定的底图
+        // 初始化地图，默认使用 defaultLayerKey 指定的底图；URL 指定了 m 参数则恢复中心与缩放
         const map = L.map('map', {
-            center: [30, 110],
-            zoom: 4,
+            center: urlState.center ? [urlState.center.lat, urlState.center.lng] : [30, 110],
+            zoom: urlState.center ? urlState.center.zoom : 4,
             zoomControl: false, // 禁用默认左上角缩放控件
-            layers: [baseMaps[defaultLayerKey]]
+            layers: [baseMaps[initialLayerKey]]
         });
 
         // 自定义图标（左击标点；图钉钉尖为点击位置）
@@ -569,13 +603,14 @@
             opt.textContent = baseMaps[name].options.label || name;
             layerSelect.appendChild(opt);
         });
-        layerSelect.value = defaultLayerKey;
+        layerSelect.value = initialLayerKey;
 
         let pinned = false;
         let pinnedPoint = null;
         let pinMarker = null;
         let lastHover = null;
-        let currentLayer = baseMaps[defaultLayerKey];
+        let currentLayer = baseMaps[initialLayerKey];
+        let currentLayerKey = initialLayerKey;
 
         map.on('mousemove', function (e) {
             if (pinned) return;
@@ -619,6 +654,7 @@
             pinMarker = L.marker([p.lat, p.lng], {icon: pinIcon}).addTo(map);
             pinBtn.title = '取消固定';
             bindMeasureMarkers();
+            updateURL();
         }
 
         // 取消固定
@@ -633,6 +669,7 @@
                 pinMarker = null;
             }
             pinBtn.title = '固定当前坐标';
+            updateURL();
         }
 
         // 左键点击地图：固定该点经纬度（测量模式下不固定）
@@ -958,6 +995,7 @@
             const nextCRS = layer.options.crs || 'wgs84';
             map.removeLayer(currentLayer);
             currentLayer = layer;
+            currentLayerKey = name;
             map.addLayer(currentLayer);
             layerSelect.value = name;
             document.getElementById('crsName').textContent = nextCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
@@ -985,11 +1023,36 @@
                 }
                 currentCRS = nextCRS;
             }
+            updateURL();
         }
 
         layerSelect.addEventListener('change', function () {
             switchLayer(this.value);
         });
+
+        // ---------- URL 状态同步（仿 Google Maps：刷新后不恢复默认状态） ----------
+        // 将当前中心、缩放、图层与固定点写入 URL（?m=@lat,lng,zoomz&layer=xxx&pin=lat,lng）
+        function updateURL() {
+            const c = map.getCenter();
+            // 手动拼接查询串：@ 与逗号在 URL 查询串中是合法字符，直接保留更可读（类似 Google Maps）
+            let query = 'm=@' + c.lat.toFixed(6) + ',' + c.lng.toFixed(6) + ',' + map.getZoom() + 'z';
+            query += '&layer=' + encodeURIComponent(currentLayerKey);
+            if (pinned && pinnedPoint) {
+                query += '&pin=' + pinnedPoint.lat.toFixed(6) + ',' + pinnedPoint.lng.toFixed(6);
+            }
+            // file:// 协议下 replaceState 会抛异常，忽略即可
+            try {
+                history.replaceState(null, '', location.pathname + '?' + query);
+            } catch (e) { }
+        }
+
+        // 地图移动/缩放结束时同步 URL（缩放会伴随 moveend，故只需监听 moveend）
+        map.on('moveend', updateURL);
+
+        // 首次加载时若有 URL 固定点则恢复
+        if (urlState.pin) {
+            setPinned(urlState.pin);
+        }
     </script>
 </body>
 </html>
