@@ -365,6 +365,8 @@
                 gap: 6px;
                 min-height: 0;
                 overflow: hidden;
+                /* 右侧为常驻收起按钮留白，避免遮挡内容 */
+                padding-right: 50px;
             }
             .top-bar .row {
                 width: 100%;
@@ -440,13 +442,12 @@
             }
 
             /* 移动端 top-bar 收起/展开按钮（layers 图标）：
-               grid-template-rows 1fr→0fr 折叠内容高度（容器高度 auto 实时跟随，无跳变），
-               宽度右缘锚定向左收缩，最终停在右上角 48px 圆钮；展开为反向逆过程 */
+               grid-template-rows 1fr→0fr 折叠内容高度，宽度右缘锚定向左收缩；
+               按钮固定右上角（top 4px 对齐、right 2px），收起时 top-bar 收缩到刚好包裹按钮 */
             .top-bar .bar-toggle {
                 position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
+                top: 4px;
+                right: 2px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -456,27 +457,21 @@
                 border-radius: 50%;
                 border: none;
                 background: #fff;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
                 cursor: pointer;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.25s ease;
             }
             .top-bar .bar-toggle:active {
-                transform: translate(-50%, -50%) scale(0.9);
-            }
-            .top-bar.collapsed .bar-body {
-                grid-template-rows: 0fr;
+                transform: scale(0.9);
             }
             .top-bar.collapsed {
                 width: 48px;
+                min-height: 52px;
                 padding: 0;
-                border-radius: 50%;
+                border-radius: 26px;
                 gap: 0;
             }
-            .top-bar.collapsed .bar-toggle {
-                opacity: 1;
-                pointer-events: auto;
+            .top-bar.collapsed .bar-body {
+                grid-template-rows: 0fr;
             }
         }
     </style>
