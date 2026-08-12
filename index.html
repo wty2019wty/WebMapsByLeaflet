@@ -27,28 +27,57 @@
         .leaflet-control-layers-base label:hover {
             background: #f0f0f0;
         }
-        /* 顶部标题栏 */
-        .title-bar {
+        /* 顶部信息栏 */
+        .top-bar {
             position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 12px;
+            left: 12px;
             z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 8px 20px;
-            border-radius: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 20px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #1f2937;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
             font-family: system-ui, sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
             pointer-events: none;
-            backdrop-filter: blur(4px);
+        }
+        .top-bar .logo {
+            font-size: 18px;
+            line-height: 1;
+        }
+        .top-bar .layer-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #111827;
+            white-space: nowrap;
+        }
+        .top-bar .sep {
+            width: 1px;
+            height: 18px;
+            background: #d1d5db;
+        }
+        .top-bar .coords {
+            font-size: 13px;
+            color: #4b5563;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
         }
     </style>
 </head>
 <body>
-    <div class="title-bar">🗺️ Web 地图查看器</div>
+    <div class="top-bar">
+        <span class="logo">🗺️</span>
+        <span class="layer-name" id="layerName">Web 地图查看器</span>
+        <span class="sep"></span>
+        <span class="coords" id="coords">纬度 --  经度 --</span>
+    </div>
     <div id="map"></div>
 
     <script>
@@ -74,13 +103,26 @@
         // 添加图源切换控件
         L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-        // 添加比例尺
-        L.control.scale({ position: 'bottomleft' }).addTo(map);
+        // 添加比例尺（仅公制）
+        L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+
+        // 实时显示鼠标经纬度
+        const coords = document.getElementById('coords');
+        map.on('mousemove', function (e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            const latD = lat >= 0 ? 'N' : 'S';
+            const lngD = lng >= 0 ? 'E' : 'W';
+            coords.textContent = '纬度 ' + Math.abs(lat).toFixed(5) + '° ' + latD +
+                '  经度 ' + Math.abs(lng).toFixed(5) + '° ' + lngD;
+        });
+        map.on('mouseout', function () {
+            coords.textContent = '纬度 --  经度 --';
+        });
 
         // 添加当前图源名称显示
         map.on('baselayerchange', function (e) {
-            const title = document.querySelector('.title-bar');
-            title.textContent = '🗺️ ' + e.name;
+            document.getElementById('layerName').textContent = e.name;
         });
     </script>
 </body>
