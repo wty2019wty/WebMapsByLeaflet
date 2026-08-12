@@ -53,8 +53,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 18px;
-            height: 18px;
+            width: 24px;
+            height: 24px;
         }
         .top-bar .layer-select {
             font-size: 14px;
@@ -166,15 +166,28 @@
 
         .leaflet-control-zoom-in {
             background-image: url('lib/leaflet/svg/add-square-svgrepo-com.svg');
-            background-size: 20px 20px;
+            background-size: 24px 24px;
             background-position: center;
             background-repeat: no-repeat;
+            background-color: transparent;
+            border: none;
+            width: 30px;
+            height: 30px;
         }
         .leaflet-control-zoom-out {
             background-image: url('lib/leaflet/svg/minus-square-svgrepo-com.svg');
-            background-size: 20px 20px;
+            background-size: 24px 24px;
             background-position: center;
             background-repeat: no-repeat;
+            background-color: transparent;
+            border: none;
+            width: 30px;
+            height: 30px;
+        }
+        .leaflet-control-zoom {
+            background: transparent;
+            border: none;
+            box-shadow: none;
         }
 
         .measure-tooltip {
@@ -191,7 +204,7 @@
 </head>
 <body>
     <div class="top-bar" id="topBar">
-        <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 18px; height: 18px;"></span>
+        <span class="logo"><img src="lib/leaflet/svg/layers-svgrepo-com.svg" alt="layers" style="width: 24px; height: 24px;"></span>
         <select class="layer-select" id="layerSelect">
             <option value="google">Google 卫星</option>
             <option value="Arcgisonline">ArcGIS 卫星</option>
@@ -199,8 +212,9 @@
         <span class="crs-badge" id="crsName">WGS-84</span>
         <span class="sep"></span>
         <span class="coords" id="coords" title="当前坐标">纬度 --  经度 --</span>
-        <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 15px; height: 15px;"></button>
-        <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 15px; height: 15px;"></button>
+        <button class="copy-btn" id="copyBtn" title="复制坐标"><img src="lib/leaflet/svg/copy-svgrepo-com.svg" alt="copy" style="width: 20px; height: 20px;"></button>
+        <button class="pin-btn" id="pinBtn" title="固定当前坐标"><img src="lib/leaflet/svg/pin-svgrepo-com.svg" alt="pin" style="width: 20px; height: 20px;"></button>
+        <button class="pin-btn" id="measureBtn" title="测量距离"><img src="lib/leaflet/svg/ruler-svgrepo-com.svg" alt="measure" style="width: 20px; height: 20px;"></button>
     </div>
     <div id="map"></div>
     <div class="toast" id="toast"></div>
