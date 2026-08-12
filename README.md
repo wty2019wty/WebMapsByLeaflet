@@ -17,16 +17,22 @@
 ```
 WebMapsByLeaflet/
 ├── index.html          # 主应用文件
-└── lib/leaflet/        # Leaflet 库文件    
-        ├── leaflet.js
-        ├── leaflet.css
-        └── svg/        # 图标资源
-
+├── lib/leaflet/        # Leaflet 库文件
+│   ├── leaflet.js
+│   ├── leaflet.css
+│   └── svg/           # 图标资源
+├── run.bat             # 启动脚本
+└── LICENSE             # 许可证文件
 ```
 
-
-
 ## 使用说明
+
+### 启动应用
+1. 双击运行 `run.bat` 或在命令行执行：
+   ```bash
+   python -m http.server 80
+   ```
+2. 在浏览器中访问 `http://localhost`
 
 ### 地图操作
 - **左键点击**：固定当前坐标位置
