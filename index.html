@@ -347,14 +347,14 @@
                 gap: 6px;
                 padding: 8px 10px;
                 transition:
-                    width var(--bar-dur, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
-                    padding var(--bar-dur, 0.35s) cubic-bezier(0.4, 0, 0.2, 1),
-                    border-radius var(--bar-dur, 0.35s) cubic-bezier(0.4, 0, 0.2, 1);
+                    width var(--bar-dur, 0.25s) cubic-bezier(0.4, 0, 0.2, 1),
+                    padding var(--bar-dur, 0.25s) cubic-bezier(0.4, 0, 0.2, 1),
+                    border-radius var(--bar-dur, 0.25s) cubic-bezier(0.4, 0, 0.2, 1);
                 overflow: hidden;
             }
             .top-bar .bar-body {
                 display: block;
-                transition: opacity 0.2s ease;
+                transition: opacity 0.14s ease;
             }
             .top-bar .bar-inner {
                 display: flex;
@@ -460,7 +460,7 @@
             /* 收起：内容淡出与宽度收缩同时进行；展开：宽度撑开后内容淡入 */
             .top-bar.collapsing .bar-body {
                 opacity: 0;
-                transition: opacity 0.18s ease;
+                transition: opacity 0.12s ease;
             }
             .top-bar.collapsed {
                 width: 48px;
@@ -677,8 +677,8 @@
         let barAnimTimer = null;
         let barExpandEnd = null;
 
-        const BAR_PX_MS = 0.6;
-        const BAR_MAX_MS = 900;
+        const BAR_PX_MS = 0.35;
+        const BAR_MAX_MS = 300;
 
         function setBarDuration() {
             var t = Math.min(Math.round((topBarEl.offsetWidth - 48) * BAR_PX_MS), BAR_MAX_MS);
@@ -704,7 +704,7 @@
             barAnimTimer = setTimeout(function () {
                 barBody.style.display = 'none';
                 topBarEl.classList.remove('collapsing');
-            }, 200);
+            }, 130);
         }
 
         // 展开：恢复内容（透明），width 撑开完成后内容淡入
