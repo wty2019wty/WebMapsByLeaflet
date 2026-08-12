@@ -531,6 +531,7 @@
             measureMode = true;
             measureBtn.classList.add('pinned');
             measureBtn.title = '退出测量';
+            showToast('已进入测量模式，单击添加测量点，双击结束');
             map.getContainer().style.cursor = 'crosshair';
             layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
             map.doubleClickZoom.disable();
@@ -546,6 +547,7 @@
             measureMode = false;
             measureBtn.classList.remove('pinned');
             measureBtn.title = '测量距离';
+            showToast('已退出测量模式');
             map.getContainer().style.cursor = '';
             layerSelect.disabled = false;
             map.off('click', onMeasureClick);
