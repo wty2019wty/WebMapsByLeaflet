@@ -969,10 +969,11 @@
             layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
             map.on('click', onMeasureClick);
             map.getContainer().addEventListener('contextmenu', preventContextMenu);
+            // 预览线跟随鼠标：始终绑定（触控设备上触摸不会触发 mousemove，无副作用）
+            map.on('mousemove', onRightMouseMove);
             // 触控设备使用系统手势平移/双指缩放，无需右键拖拽逻辑
             if (!isTouch) {
                 map.on('mousedown', onRightMouseDown);
-                map.on('mousemove', onRightMouseMove);
                 map.on('mouseup', onRightMouseUp);
             }
             // 联动：测量模式下可直接点击定位/固定标点选取其位置
@@ -988,9 +989,9 @@
             layerSelect.disabled = false;
             map.off('click', onMeasureClick);
             map.getContainer().removeEventListener('contextmenu', preventContextMenu);
+            map.off('mousemove', onRightMouseMove);
             if (!isTouch) {
                 map.off('mousedown', onRightMouseDown);
-                map.off('mousemove', onRightMouseMove);
                 map.off('mouseup', onRightMouseUp);
             }
             if (pinMarker) pinMarker.off('click', onMarkerClick);
