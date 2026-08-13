@@ -519,7 +519,6 @@
 
 
 
-
             'Arcgisonline': L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
                 attribution: '<a href="https://arcgisonline.com/">arcgisonline</a> contributors',
                 maxZoom: 19,
@@ -528,6 +527,7 @@
             }),
 
             'google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&hl=zh-CN&gl=cn&scale=2&x={x}&y={y}&z={z}', {
+                attribution: 'Imagery © Google',
                 maxZoom: 21,
                 subdomains: [0, 1, 2, 3],
                 crs: 'gcj02',
@@ -563,7 +563,7 @@
                 if (pp) {
                     const lat = parseFloat(pp[1]);
                     const lng = parseFloat(pp[2]);
-                    if (isFinite(lat) && isFinite(lng)) state.pin = { lat: lat, lng: lng };
+                    if (isFinite(lat) && isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) state.pin = { lat: lat, lng: lng };
                 }
             }
             return state;
@@ -574,6 +574,8 @@
         // 当前底图的坐标系（优先使用 URL 指定的底图，否则使用默认底图）
         const initialLayerKey = (urlState.layer && baseMaps[urlState.layer]) ? urlState.layer : defaultLayerKey;
         let currentCRS = baseMaps[initialLayerKey].options.crs || 'wgs84';
+        // 初始化坐标系徽标，与当前底图保持一致（HTML 中默认硬编码为 GCJ-02）
+        document.getElementById('crsName').textContent = currentCRS === 'gcj02' ? 'GCJ-02' : 'WGS-84';
 
         // ---------- WGS-84 与 GCJ-02 互转（标准算法） ----------
         function outOfChina(lat, lng) {
@@ -671,12 +673,14 @@
         let barCollapsed = false;
         let barAnimTimer = null;
         let barExpandEnd = null;
+        let barExpandedWidth = 0;
 
         const BAR_PX_MS = 0.35;
         const BAR_MAX_MS = 300;
 
-        function setBarDuration() {
-            var t = Math.min(Math.round((topBarEl.offsetWidth - 48) * BAR_PX_MS), BAR_MAX_MS);
+        function setBarDuration(width) {
+            var w = (typeof width === 'number' && width > 0) ? width : topBarEl.offsetWidth;
+            var t = Math.min(Math.round((w - 48) * BAR_PX_MS), BAR_MAX_MS);
             topBarEl.style.setProperty('--bar-dur', t + 'ms');
         }
 
@@ -690,7 +694,8 @@
         // 收起：opacity 淡出与 width 收缩同时启动，淡出完成后隐藏内容
         function collapseBar() {
             if (barCollapsed) return;
-            setBarDuration();
+            barExpandedWidth = topBarEl.offsetWidth;
+            setBarDuration(barExpandedWidth);
             clearTimeout(barAnimTimer);
             clearExpandEnd();
             topBarEl.classList.add('collapsing', 'collapsed');
@@ -707,6 +712,7 @@
             if (!barCollapsed) return;
             clearTimeout(barAnimTimer);
             clearExpandEnd();
+            setBarDuration(barExpandedWidth);
             barBody.style.display = '';
             topBarEl.classList.add('expanding');
             topBarEl.classList.remove('collapsed');
@@ -758,6 +764,8 @@
         let pinnedPoint = null;
         let pinMarker = null;
         let lastHover = null;
+        // 右键拖拽平移状态（测量模式使用，鼠标移出地图时也需重置）
+        let rightDrag = null;
         let currentLayer = baseMaps[initialLayerKey];
         let currentLayerKey = initialLayerKey;
 
@@ -830,6 +838,8 @@
         // 右键点击地图：取消固定（测量模式下右键用于拖动地图，不取消固定）
         map.on('contextmenu', function (e) {
             if (measureMode) return;
+            // 非测量模式下右键用于取消固定，阻止浏览器默认菜单弹出
+            e.originalEvent.preventDefault();
             if (pinned) {
                 clearPinned();
             }
@@ -933,7 +943,6 @@
         let measureLine = null;
         let measurePreviewLine = null;
         let measureTooltip = null;
-        let rightDrag = null;
         const measureBtn = document.getElementById('measureBtn');
 
         measureBtn.addEventListener('click', function () {
@@ -953,10 +962,11 @@
             layerSelect.disabled = true; // 测量期间禁止切换底图，避免测量点坐标系错乱
             map.on('click', onMeasureClick);
             map.getContainer().addEventListener('contextmenu', preventContextMenu);
+            // 预览线跟随鼠标：始终绑定（触控设备上触摸不会触发 mousemove，无副作用）
+            map.on('mousemove', onRightMouseMove);
             // 触控设备使用系统手势平移/双指缩放，无需右键拖拽逻辑
             if (!isTouch) {
                 map.on('mousedown', onRightMouseDown);
-                map.on('mousemove', onRightMouseMove);
                 map.on('mouseup', onRightMouseUp);
             }
             // 联动：测量模式下可直接点击定位/固定标点选取其位置
@@ -972,9 +982,9 @@
             layerSelect.disabled = false;
             map.off('click', onMeasureClick);
             map.getContainer().removeEventListener('contextmenu', preventContextMenu);
+            map.off('mousemove', onRightMouseMove);
             if (!isTouch) {
                 map.off('mousedown', onRightMouseDown);
-                map.off('mousemove', onRightMouseMove);
                 map.off('mouseup', onRightMouseUp);
             }
             if (pinMarker) pinMarker.off('click', onMarkerClick);
